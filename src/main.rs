@@ -1,4 +1,5 @@
 mod cli;
+mod commands;
 mod config;
 mod runner;
 
@@ -17,8 +18,12 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Some(Subcommands::Add { name: _ }) => {
-            unimplemented!("'add' command is not yet implemented.");
+        Some(Subcommands::Add {
+            name,
+            local,
+            global,
+        }) => {
+            commands::add::handle_add_command(&name, local, global, &claw_config)?;
         }
         Some(Subcommands::General) => {
             unimplemented!("'general' command is not yet implemented.");

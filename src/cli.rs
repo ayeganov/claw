@@ -1,4 +1,4 @@
-use clap::{Args, Parser, Subcommand};
+use clap::{ArgGroup, Args, Parser, Subcommand};
 use std::collections::HashMap;
 
 /// A goal-driven, context-aware wrapper for Large Language Model (LLM) CLIs.
@@ -29,11 +29,19 @@ pub struct RunArgs {
 
 #[derive(Subcommand, Debug)]
 pub enum Subcommands {
-    /// Add a new goal using an LLM-assisted workflow.
+    #[command(group(ArgGroup::new("location").args(["local", "global"])))]
     Add {
         /// The name of the new goal to create.
         #[arg(required = true)]
         name: String,
+
+        /// Force creation of the goal in the local .claw/ directory.
+        #[arg(long)]
+        local: bool,
+
+        /// Force creation of the goal in the global ~/.config/claw directory.
+        #[arg(long)]
+        global: bool,
     },
     /// Execute the underlying LLM CLI directly without any modifications.
     General,
