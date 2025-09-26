@@ -25,8 +25,8 @@ fn main() -> Result<()> {
         }) => {
             commands::add::handle_add_command(&name, local, global, &claw_config)?;
         }
-        Some(Subcommands::General) => {
-            unimplemented!("'general' command is not yet implemented.");
+        Some(Subcommands::Pass) => {
+            runner::run_pass_through(&claw_config)?;
         }
         None => {
             if let Some(goal_name) = cli.run_args.goal_name {

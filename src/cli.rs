@@ -44,7 +44,7 @@ pub enum Subcommands {
         global: bool,
     },
     /// Execute the underlying LLM CLI directly without any modifications.
-    General,
+    Pass,
 }
 
 /// Parses a vector of string arguments into a HashMap.

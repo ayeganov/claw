@@ -87,84 +87,31 @@ pub fn run_llm(config: &ClawConfig, prompt: &str) -> Result<()> {
     Ok(())
 }
 
-//pub fn run_llm(config: &ClawConfig, prompt: &str) -> Result<()> {
-//    // --- THE FIX ---
-//    // The script must use "$1" because we are providing a dummy value for "$0".
-//    let template_with_placeholder = config.prompt_arg_template.replace("{{prompt}}", "$1");
-//    // ---------------
-//
-//    let script = format!("{} {}", config.llm_command, template_with_placeholder);
-//
-//    let mut command = Command::new("sh");
-//
-//    // For the shell command `sh -c script arg0 arg1 ...`:
-//    // `arg0` is assigned to `$0` inside the script.
-//    // `arg1` is assigned to `$1` inside the script.
-//    // We provide a dummy name for $0 ("claw-script") and pass the real prompt as the value for $1.
-//    command
-//        .arg("-c")
-//        .arg(&script)
-//        .arg("claw-script")
-//        .arg(prompt);
-//
-//    // --- DEBUGGING ---
-//    // This will print the exact components before execution.
-//    println!("\n--- CLAW DEBUG ---");
-//    println!("Final script sent to sh -c: '{}'", script);
-//    println!("Argument for $0 (name):   'claw-script'");
-//    println!("Argument for $1 (prompt): '{}'", prompt.trim());
-//    println!("--------------------\n");
-//    // -----------------
-//
-//    let status = command
-//        .status()
-//        .with_context(|| format!("Failed to execute LLM command: '{}'", config.llm_command))?;
-//
-//    if !status.success() {
-//        anyhow::bail!(
-//            "LLM command '{}' exited with non-zero status: {}",
-//            config.llm_command,
-//            status
-//        );
-//    }
-//
-//    Ok(())
-//}
+pub fn run_pass_through(config: &ClawConfig) -> Result<()> {
+    let llm_executable = which::which(&config.llm_command).with_context(|| {
+        format!(
+            "LLM command '{}' not found in your PATH. Please make sure it's installed and accessible.",
+            config.llm_command
+        )
+    })?;
 
-// Executes the configured LLM command interactively.
-//
-// This function constructs a shell command from the `ClawConfig` and the
-// rendered prompt, then executes it, passing through stdin, stdout, and stderr.
-// This effectively drops the user into the interactive LLM session.
+    let mut command = Command::new(&llm_executable);
 
-//pub fn run_llm(config: &ClawConfig, prompt: &str) -> Result<()> {
-//    // Replace the placeholder with a shell positional parameter ($1).
-//    // This is safer than direct formatting to avoid shell injection.
-//    let template_with_placeholder = config.prompt_arg_template.replace("{{prompt}}", "$1");
-//
-//    // Combine the command and the template into a single script for `sh -c`.
-//    let script = format!("{} {}", config.llm_command, template_with_placeholder);
-//
-//    println!("Executing the script: {}", script);
-//    // The `--` argument tells `sh -c` to stop processing its own options
-//    // and treat subsequent arguments as positional parameters for the script.
-//    let mut command = Command::new("sh");
-//    command.arg("-c").arg(script).arg("--").arg(prompt);
-//
-//    // Use `.status()` instead of `.output()` to run the command interactively.
-//    // This connects the command's stdin/stdout/stderr to our own.
-//    let status = command
-//        .status()
-//        .with_context(|| format!("Failed to execute LLM command: '{}'", config.llm_command))?;
-//
-//    if !status.success() {
-//        // We don't have stderr/stdout to print, but we can report the exit code.
-//        anyhow::bail!(
-//            "LLM command '{}' exited with non-zero status: {}",
-//            config.llm_command,
-//            status
-//        );
-//    }
-//
-//    Ok(())
-//}
+    let status = command.status().with_context(|| {
+        format!(
+            "Failed to execute LLM command: '{}'",
+            llm_executable.display()
+        )
+    })?;
+
+    if !status.success() {
+        // Since this is a direct pass-through, we don't bail with an error,
+        // as the user might have intentionally exited with a non-zero status.
+        // We just exit our own process with the same code.
+        if let Some(code) = status.code() {
+            std::process::exit(code);
+        }
+    }
+
+    Ok(())
+}
