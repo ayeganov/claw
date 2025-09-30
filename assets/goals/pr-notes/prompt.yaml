@@ -2,7 +2,7 @@ name: "Pull Request Notes"
 description: "Create pull request notes based on the changes made in the repo"
 
 context_scripts:
-  branch_diff: "git diff $(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@' || (git show-ref --verify --quiet refs/heads/main && echo 'main') || echo 'master')... -- . ':(exclude)*.lock'"
+  branch_diff: "bash -c 'BASE=$(git show-ref --verify --quiet refs/heads/main && echo main || echo master); git diff ${BASE}...HEAD -- . \":(exclude)*.lock\"'"
 
 prompt: |
   Based on the following git diff, write PR notes following this exact format. Do NOT run any commands yourself - only analyze the provided diff.
