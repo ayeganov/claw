@@ -1,0 +1,112 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.platform }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux
+            os: ubuntu-latest
+            format: deb
+            artifact: claw_*_amd64.deb
+          - platform: macos
+            os: macos-latest
+            format: dmg
+            artifact: claw_*_x64.dmg
+          - platform: windows
+            os: windows-latest
+            format: wix
+            artifact: claw_*_x64_en-US.msi
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Install WiX Toolset (Windows only)
+        if: matrix.platform == 'windows'
+        run: |
+          dotnet tool install --global wix --version 4.0.4
+          wix --version
+
+      - name: Install cargo-packager
+        run: cargo install cargo-packager
+
+      - name: Build binary
+        run: cargo build --profile dist
+
+      - name: Package
+        run: cargo packager --config Packager.toml --formats ${{ matrix.format }}
+
+      - name: Find package file
+        id: find-package
+        shell: bash
+        run: |
+          if [ "${{ matrix.platform }}" == "windows" ]; then
+            PACKAGE=$(ls ${{ matrix.artifact }} 2>/dev/null || echo "")
+          else
+            PACKAGE=$(ls ${{ matrix.artifact }})
+          fi
+          echo "package=$PACKAGE" >> $GITHUB_OUTPUT
+          echo "Found package: $PACKAGE"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.platform }}-package
+          path: ${{ steps.find-package.outputs.package }}
+          if-no-files-found: error
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Display artifacts
+        run: ls -R artifacts/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/**/*.deb
+            artifacts/**/*.dmg
+            artifacts/**/*.msi
+          generate_release_notes: true
+          draft: false
+          prerelease: false

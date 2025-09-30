@@ -291,11 +291,13 @@ fn find_assets_dir() -> Result<PathBuf> {
     // - `../assets`: For development (`target/debug/claw`)
     // - `../lib/claw/assets`: For cargo-packager deb packages (`/usr/bin/claw`)
     // - `../share/claw/assets`: For common Linux installations (`/usr/bin/claw`)
+    // - `../Resources/assets`: For macOS app bundles (`/Applications/claw.app/Contents/MacOS/claw`)
     // - `./assets`: For when assets are next to the exe (Windows .zip installs)
     let potential_paths = [
         PathBuf::from("../assets"),
         PathBuf::from("../lib/claw/assets"),
         PathBuf::from("../share/claw/assets"),
+        PathBuf::from("../Resources/assets"),
         PathBuf::from("assets"),
     ];
 
