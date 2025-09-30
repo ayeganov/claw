@@ -9,14 +9,8 @@
 </p>
 
 <p align="center">
-<a href="https://www.google.com/search?q=https://crates.io/crates/claw">
-<img src="https://www.google.com/search?q=https://img.shields.io/crates/v/claw.svg" alt="Crates.io"/>
-</a>
-<a href="https://www.google.com/search?q=https://github.com/your-username/claw/actions">
-<img src="https://www.google.com/search?q=https://github.com/your-username/claw/workflows/CI/badge.svg" alt="CI Status"/>
-</a>
 <a href="https://opensource.org/licenses/MIT">
-<img src="https://www.google.com/search?q=https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"/>
+<img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"/>
 </a>
 </p>
 
