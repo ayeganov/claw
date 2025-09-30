@@ -1,0 +1,49 @@
+# Package metadata
+name = "claw"
+version = "0.1.0"
+authors = ["Aleksandr Yeganov"]
+description = "A goal-driven, context-aware wrapper for Large Language Model (LLM) CLIs."
+homepage = "https://github.com/ayeganov/claw"
+license-file = "LICENSE"
+
+# Product name displayed to users
+product-name = "claw"
+
+# Application identifier (reverse-DNS style)
+identifier = "com.ayeganov.claw"
+
+# Categories for the application
+category = "Development"
+
+# Package formats - will build all by default, or use --formats to override
+formats = ["deb", "dmg", "wix"]
+
+# Specify the main binary
+binaries = [{ path = "target/dist/claw", main = true }]
+
+# Resources to bundle with the application
+# These will be placed in a standard location that your app can find
+# Linux: /usr/share/claw/assets/
+# macOS: Contents/Resources/assets/ (in app bundle)
+# Windows: assets/ (next to exe)
+[[resources]]
+src = "assets"
+target = "assets"
+
+# Use logo.png as the application icon
+# cargo-packager will automatically resize for different platforms
+icons = ["assets/logo.png"]
+
+# Platform-specific configurations
+
+# Linux Debian package
+[deb]
+# Dependencies for Debian-based systems
+depends = []
+
+# macOS
+[dmg]
+# DMG window settings
+window-size = { width = 660, height = 400 }
+app-position = { x = 180, y = 170 }
+application-folder-position = { x = 480, y = 170 }

@@ -9,15 +9,6 @@ repository = "https://github.com/user/claw"
 [package.metadata.dist]
 assets = ["assets/"]
 
-[workspace.metadata.dist]
-
-cargo-dist-version = "0.30.0"
-branches = ["main", "feat/add_installer"]
-# The platforms to build for
-targets = ["x86_64-unknown-linux-gnu", "x86_64-apple-darwin", "x86_64-pc-windows-msvc"]
-# The installers to generate
-installers = ["shell", "homebrew"]
-
 [dependencies]
 # For robust command-line argument parsing
 clap = { version = "4.5.4", features = ["derive"] }
@@ -43,3 +34,8 @@ directories = "5.0.1"
 anyhow = "1.0.82"
 which = "8.0.0"
 shlex = "1.3.0"
+
+# The profile that 'dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"

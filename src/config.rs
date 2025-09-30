@@ -289,10 +289,12 @@ fn find_assets_dir() -> Result<PathBuf> {
 
     // List of potential relative paths to the assets directory.
     // - `../assets`: For development (`target/debug/claw`)
+    // - `../lib/claw/assets`: For cargo-packager deb packages (`/usr/bin/claw`)
     // - `../share/claw/assets`: For common Linux installations (`/usr/bin/claw`)
     // - `./assets`: For when assets are next to the exe (Windows .zip installs)
     let potential_paths = [
         PathBuf::from("../assets"),
+        PathBuf::from("../lib/claw/assets"),
         PathBuf::from("../share/claw/assets"),
         PathBuf::from("assets"),
     ];
