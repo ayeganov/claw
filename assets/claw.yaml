@@ -1,0 +1,10 @@
+# The executable name of the LLM CLI tool that exists in your PATH.
+# Change this to "gemini", "ollama", or any other tool you use.
+llm_command: "claude"
+
+# (Optional) The argument pattern for passing the prompt to the LLM.
+# The "{{prompt}}" placeholder will be replaced with the final rendered prompt.
+# The default is just "{{prompt}}".
+#
+# Example for gemini-cli:
+# prompt_arg_template: "-i {{prompt}}"
