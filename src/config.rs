@@ -9,36 +9,6 @@ use std::fmt;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-const DEFAULT_GOAL_CONTENT: &str = r#"
-# A user-friendly name for display in lists. Required.
-name: "General Research"
-
-# A short, one-line description of the goal's purpose. Optional.
-description: "A general-purpose research assistant."
-
-# The actual prompt text, processed by the `tera` templating engine. Required.
-prompt: |
-  You are a world-class research assistant.
-  Please provide a concise and comprehensive summary of the following topic:
-
-  "{{ Args.topic | default(value="the importance of clear communication") }}"
-
-  Please structure your response with clear headings and bullet points.
-"#;
-
-const DEFAULT_CLAW_CONFIG: &str = r#"
-# The executable name of the LLM CLI tool that exists in your PATH.
-# Change this to "gemini", "ollama", or any other tool you use.
-llm_command: "claude"
-
-# (Optional) The argument pattern for passing the prompt to the LLM.
-# The "{{prompt}}" placeholder will be replaced with the final rendered prompt.
-# The default is just "{{prompt}}".
-#
-# Example for gemini-cli:
-# prompt_arg_template: "-i {{prompt}}"
-"#;
-
 #[derive(Debug, Clone, Deserialize)]
 pub struct ClawConfig {
     /// The executable name of the LLM command-line tool.
@@ -311,6 +281,39 @@ pub fn find_all_goals() -> Result<Vec<DiscoveredGoal>> {
     Ok(discovered_goals)
 }
 
+fn find_assets_dir() -> Result<PathBuf> {
+    let exe_path = env::current_exe().context("Failed to get current executable path")?;
+    let exe_dir = exe_path
+        .parent()
+        .context("Failed to get parent directory of executable")?;
+
+    // List of potential relative paths to the assets directory.
+    // - `../assets`: For development (`target/debug/claw`)
+    // - `../lib/claw/assets`: For cargo-packager deb packages (`/usr/bin/claw`)
+    // - `../share/claw/assets`: For common Linux installations (`/usr/bin/claw`)
+    // - `../Resources/assets`: For macOS app bundles (`/Applications/claw.app/Contents/MacOS/claw`)
+    // - `./assets`: For when assets are next to the exe (Windows .zip installs)
+    let potential_paths = [
+        PathBuf::from("../assets"),
+        PathBuf::from("../lib/claw/assets"),
+        PathBuf::from("../share/claw/assets"),
+        PathBuf::from("../Resources/assets"),
+        PathBuf::from("assets"),
+    ];
+
+    for path in &potential_paths {
+        let assets_dir = exe_dir.join(path);
+        if assets_dir.is_dir() {
+            return Ok(assets_dir);
+        }
+    }
+
+    anyhow::bail!(
+        "Could not find the bundled assets directory. Searched in paths relative to {}",
+        exe_dir.display()
+    );
+}
+
 pub fn ensure_global_config_exists() -> Result<()> {
     if let Some(base_dirs) = BaseDirs::new() {
         let config_dir = base_dirs.config_dir().join("claw");
@@ -328,7 +331,6 @@ You can edit it to change the underlying LLM command.
                 config_dir.display()
             );
 
-            // Create ~/.config/claw/
             fs::create_dir_all(&config_dir).with_context(|| {
                 format!(
                     "Failed to create claw config directory at {}",
@@ -336,25 +338,32 @@ You can edit it to change the underlying LLM command.
                 )
             })?;
 
-            // --- NEW: Write the default claw.yaml ---
-            let config_path = config_dir.join("claw.yaml");
-            fs::write(&config_path, DEFAULT_CLAW_CONFIG)
-                .with_context(|| format!("Failed to write config to {}", config_path.display()))?;
-            // -----------------------------------------
+            let assets_dir =
+                find_assets_dir().context("Failed to locate assets for first-time setup")?;
 
-            // Create the example goal
-            let goals_dir = config_dir.join("goals");
-            let example_goal_dir = goals_dir.join("example");
-            fs::create_dir_all(&example_goal_dir).with_context(|| {
+            let config_path = config_dir.join("claw.yaml");
+
+            let source_config_path = assets_dir.join("claw.yaml");
+            fs::copy(&source_config_path, &config_path).with_context(|| {
                 format!(
-                    "Failed to create example goal directory at {}",
-                    example_goal_dir.display()
+                    "Failed to copy default config from {} to {}",
+                    source_config_path.display(),
+                    config_path.display()
                 )
             })?;
 
-            let prompt_path = example_goal_dir.join("prompt.yaml");
-            fs::write(&prompt_path, DEFAULT_GOAL_CONTENT).with_context(|| {
-                format!("Failed to write example goal to {}", prompt_path.display())
+            let goals_dir = config_dir.join("goals");
+            let example_goal_dest_dir = goals_dir.join("example");
+            fs::create_dir_all(&example_goal_dest_dir)
+                .context("Failed to create example goal directory")?;
+            let prompt_path = example_goal_dest_dir.join("prompt.yaml");
+            let source_prompt_path = assets_dir.join("goals").join("example").join("prompt.yaml");
+            fs::copy(&source_prompt_path, &prompt_path).with_context(|| {
+                format!(
+                    "Failed to copy example goal from {} to {}",
+                    source_prompt_path.display(),
+                    prompt_path.display()
+                )
             })?;
 
             println!("I've also added an example goal. Try it out by running:");

@@ -1,2 +1,5 @@
 /target
 .claw
+.scratchpad
+*.deb
+.cargo-packager

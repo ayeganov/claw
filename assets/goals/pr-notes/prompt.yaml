@@ -1,0 +1,31 @@
+name: "Pull Request Notes"
+description: "Create pull request notes based on the changes made in the repo"
+
+context_scripts:
+  branch_diff: "bash -c 'BASE=$(git show-ref --verify --quiet refs/heads/main && echo main || echo master); git diff ${BASE}...HEAD -- . \":(exclude)*.lock\"'"
+
+prompt: |
+  Based on the following git diff, write PR notes following this exact format. Do NOT run any commands yourself - only analyze the provided diff.
+
+  {{ Context.branch_diff }}
+
+  Please create PR notes in this format:
+
+  <title max 56 chars with emoji>
+
+  # What does this PR do?
+  <2 or 3 sentences summarizing what we have accomplished>
+
+  # Details
+  * <detail 1 max 160 chars>
+  * ...
+  * <detail n max 160 chars>
+
+  # Highlights
+  <optional: provide important code snippets to show the most important changes>
+
+  Make sure to:
+  - Keep the title under 56 characters and include an appropriate emoji
+  - Summarize the overall accomplishment in 2-3 sentences
+  - List specific details as bullet points (max 160 chars each)
+  - Only include highlights section if there are important code snippets worth showcasing

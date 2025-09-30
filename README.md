@@ -46,22 +46,49 @@ Examples:
 - Google's Gemini CLI (gemini)
 
 ### Installation
+
+#### From Releases (Recommended)
+Download the latest release for your platform from the [releases page](https://github.com/ayeganov/claw/releases):
+
+**Linux (Debian/Ubuntu)**
+```bash
+# Download the .deb package
+wget https://github.com/ayeganov/claw/releases/latest/download/claw_VERSION_amd64.deb
+
+# Install
+sudo dpkg -i claw_VERSION_amd64.deb
+```
+
+**macOS**
+```bash
+# Download the .dmg file
+# Open the DMG and drag claw.app to /Applications
+
+# Add to PATH by creating a symlink
+sudo ln -s /Applications/claw.app/Contents/MacOS/claw /usr/local/bin/claw
+```
+
+**Windows**
+```bash
+# Download the .msi installer and run it
+# The installer will add claw to your PATH automatically
+```
+
+#### From crates.io
 Once `claw` is published, you can install it directly from crates.io:
 
-```
+```bash
 cargo install claw
 ```
 
+#### From Source
 
-To build from source:
-
-```
-git clone [https://github.com/your-username/claw.git](https://github.com/your-username/claw.git)
+```bash
+git clone https://github.com/ayeganov/claw.git
 cd claw
 cargo build --release
 # The binary will be in ./target/release/claw
 ```
-
 
 The first time you run claw, it will automatically create a global configuration directory for you at ~/.config/claw/ with an example goal to get you started.
 

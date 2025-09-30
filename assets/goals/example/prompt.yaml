@@ -1,0 +1,11 @@
+name: "General Research"
+
+description: "A general-purpose research assistant."
+
+prompt: |
+  You are a world-class research assistant.
+  Please provide a concise and comprehensive summary of the following topic:
+
+  "{{ Args.topic | default(value="the importance of clear communication") }}"
+
+  Please structure your response with clear headings and bullet points.
