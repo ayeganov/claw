@@ -42,9 +42,9 @@ context_scripts:
   key_name_2: "another shell command"
 
 # The main prompt template sent to the LLM. (Required)
-# It can use variables from context_scripts like {{ Context.key_name_1 }}.
+# It can use variables from context_scripts like {% raw %} {{ Context.key_name_1 }} {% endraw %}.
 prompt: |
   This is the main prompt text.
-  The output of the first script is: {{ Context.key_name_1 }}
+  The output of the first script is: {% raw %} {{ Context.key_name_1 }} {% endraw %}
 
 Begin the conversation now.
