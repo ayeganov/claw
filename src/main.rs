@@ -7,6 +7,7 @@ use anyhow::{Context as AnyhowContext, Result};
 use clap::Parser;
 use cli::{Cli, Subcommands};
 use dialoguer::{Select, theme::ColorfulTheme};
+use std::collections::HashMap;
 use tera::{Context, Tera};
 
 fn main() -> Result<()> {
@@ -72,13 +73,29 @@ fn run_goal(
     template_args: &[String],
 ) -> Result<()> {
     let goal = config::find_and_load_goal(goal_name)?;
-    let script_outputs = runner::execute_context_scripts(&goal.config.context_scripts)?;
     let template_args = cli::parse_template_args(template_args)?;
 
+    // Create a Tera context with Args for rendering context scripts
     let mut context = Context::new();
     context.insert("Args", &template_args);
+
+    // Render the context scripts through Tera to substitute Args variables
+    let mut tera = Tera::default();
+    let mut rendered_scripts = HashMap::new();
+    for (name, script_template) in &goal.config.context_scripts {
+        tera.add_raw_template(name, script_template)
+            .with_context(|| format!("Failed to add context script template '{}'", name))?;
+        let rendered_script = tera
+            .render(name, &context)
+            .map_err(|e| anyhow::anyhow!("Failed to render context script '{}': {}", name, e))?;
+        rendered_scripts.insert(name.clone(), rendered_script);
+    }
+
+    // Execute the rendered context scripts
+    let script_outputs = runner::execute_context_scripts(&rendered_scripts)?;
     context.insert("Context", &script_outputs);
 
+    // Now render the main prompt with both Args and Context
     let mut tera = Tera::new(&format!("{}/**/*", goal.directory.display()))
         .context("Failed to create Tera instance")?;
     tera.add_raw_template("prompt", &goal.config.prompt)
