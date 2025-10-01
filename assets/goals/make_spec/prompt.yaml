@@ -7,7 +7,7 @@ description: "Create detailed specification documents through structured convers
 # A map of shell commands to run before the prompt. The output of each
 # command is injected into the main prompt. (Optional)
 context_scripts:
-  target_content: "for path in {{ Args.paths }}; do if [ -f \"$path\" ]; then echo \"=== $path ===\" && /bin/cat \"$path\"; elif [ -d \"$path\" ]; then find \"$path\" -type f ! -name \"*.lock\" | while read file; do if [ -d .git ] && git check-ignore -q \"$file\" 2>/dev/null; then continue; else echo \"=== $file ===\" && /bin/cat \"$file\"; fi; done; fi; done"
+  target_content: "for path in {{ Args.paths | default(value='') }}; do if [ -f \"$path\" ]; then echo \"=== $path ===\" && /bin/cat \"$path\"; elif [ -d \"$path\" ]; then find \"$path\" -type f ! -name \"*.lock\" | while read file; do if [ -d .git ] && git check-ignore -q \"$file\" 2>/dev/null; then continue; else echo \"=== $file ===\" && /bin/cat \"$file\"; fi; done; fi; done"
 
 # The main prompt template sent to the LLM. (Required)
 prompt: |
