@@ -1,6 +1,6 @@
 [package]
 name = "claw"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 description = "A goal-driven, context-aware wrapper for Large Language Model (LLM) CLIs."
 license = "MIT"
@@ -20,8 +20,9 @@ tera = "1.19.1"
 serde = { version = "1.0.198", features = ["derive"] }
 serde_yaml = "0.9.34"
 
-# For the interactive goal selection menu (`claw` with no arguments).
-dialoguer = "0.11.0"
+# For the TUI goal browser
+ratatui = "0.29.0"
+crossterm = "0.28.1"
 
 # To efficiently search upwards from the current directory for a `.claw` folder.
 walkdir = "2.5.0"

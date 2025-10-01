@@ -1,12 +1,12 @@
 mod cli;
 mod commands;
 mod config;
+mod goal_browser;
 mod runner;
 
 use anyhow::{Context as AnyhowContext, Result};
 use clap::Parser;
 use cli::{Cli, Subcommands};
-use dialoguer::{Select, theme::ColorfulTheme};
 use std::collections::HashMap;
 use tera::{Context, Tera};
 
@@ -39,27 +39,10 @@ fn main() -> Result<()> {
                     anyhow::bail!("No goals found. Add a goal using `claw add <goal_name>`.");
                 }
 
-                // Create a formatted list for the selection menu
-                let items: Vec<String> = goals
-                    .iter()
-                    .map(|g| {
-                        let description = g.config.description.as_deref().unwrap_or("");
-                        format!(
-                            "{:<20} -- {:<40} ({})", // Format for alignment
-                            g.config.name, description, g.source
-                        )
-                    })
-                    .collect();
+                // Use the new goal browser TUI
+                let selected_goal_name = goal_browser::run_goal_browser(goals)?;
 
-                let selection = Select::with_theme(&ColorfulTheme::default())
-                    .with_prompt("Choose a goal to run")
-                    .items(&items)
-                    .default(0)
-                    .interact()?;
-
-                let selected_goal_name = &goals[selection].name;
-
-                run_goal(selected_goal_name, &claw_config, &Vec::new())?;
+                run_goal(&selected_goal_name, &claw_config, &Vec::new())?;
             }
         }
     }
