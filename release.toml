@@ -1,0 +1,20 @@
+# cargo-release configuration
+# This file configures how `cargo release` handles version bumps and releases
+
+# Git tag format
+tag-name = "v{{version}}"
+
+# Don't publish to crates.io by default (remove this line if you want to publish)
+publish = false
+
+# Update version in packager.toml when releasing
+[[pre-release-replacements]]
+file = "Packager.toml"
+search = 'version = ".*"'
+replace = 'version = "{{version}}"'
+
+# Uncomment to also update version references in README
+# [[pre-release-replacements]]
+# file = "README.md"
+# search = "claw/[0-9.]+"
+# replace = "claw/{{version}}"
