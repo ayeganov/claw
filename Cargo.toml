@@ -1,6 +1,6 @@
 [package]
 name = "claw"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 description = "A goal-driven, context-aware wrapper for Large Language Model (LLM) CLIs."
 license = "MIT"
