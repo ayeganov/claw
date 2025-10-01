@@ -3,7 +3,6 @@ use anyhow::Result;
 use directories::BaseDirs;
 use serde::Deserialize;
 use std::collections::HashMap;
-use std::collections::HashSet;
 use std::env;
 use std::fmt;
 use std::fs;
@@ -230,7 +229,6 @@ pub struct DiscoveredGoal {
 pub fn find_all_goals() -> Result<Vec<DiscoveredGoal>> {
     let paths = ConfigPaths::new()?;
     let mut discovered_goals = Vec::new();
-    let mut seen_names = HashSet::new();
 
     // Priority 1: Find all local goals
     if let Some(local_path) = &paths.local {
@@ -241,7 +239,6 @@ pub fn find_all_goals() -> Result<Vec<DiscoveredGoal>> {
                 if entry.file_type()?.is_dir() {
                     let name = entry.file_name().to_string_lossy().to_string();
                     if let Some(config) = load_goal_config(local_path, &name)? {
-                        seen_names.insert(name.clone());
                         discovered_goals.push(DiscoveredGoal {
                             name,
                             source: GoalSource::Local,
@@ -261,14 +258,12 @@ pub fn find_all_goals() -> Result<Vec<DiscoveredGoal>> {
                 let entry = entry?;
                 if entry.file_type()?.is_dir() {
                     let name = entry.file_name().to_string_lossy().to_string();
-                    if !seen_names.contains(&name) {
-                        if let Some(config) = load_goal_config(global_path, &name)? {
-                            discovered_goals.push(DiscoveredGoal {
-                                name,
-                                source: GoalSource::Global,
-                                config,
-                            });
-                        }
+                    if let Some(config) = load_goal_config(global_path, &name)? {
+                        discovered_goals.push(DiscoveredGoal {
+                            name,
+                            source: GoalSource::Global,
+                            config,
+                        });
                     }
                 }
             }
