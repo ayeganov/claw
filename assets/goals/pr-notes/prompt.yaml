@@ -1,26 +1,49 @@
 name: "Pull Request Notes"
 description: "Create pull request notes based on the changes made in the repo"
 
+context_scripts:
+  branch_diff: "git diff main \":(exclude)*.lock\""
+
 prompt: |
-  Get the diff of the current branch - IMPORTANT - exclude the .lock files.
+  Based on the following git diff, write PR notes following this exact format. Do NOT run any commands yourself - only analyze the provided diff.
 
-  Review the changes and create PR notes in this format:
+  {{ Context.branch_diff }}
 
-  <title max 56 chars with emoji>
+  CRITICAL: Output raw markdown text only. Do not render or format the markdown. I need the literal markdown characters (*, #, `, etc.) visible in plain text format.
 
-  # What does this PR do?
-  <2 or 3 sentences summarizing what we have accomplished>
+  Generate PR notes using this exact structure:
 
-  # Details
-  * <detail 1 max 160 chars>
-  * ...
-  * <detail n max 160 chars>
+  ## Required Format
 
-  # Highlights
-  <optional: provide important code snippets to show the most important changes>
+  **Title (first line)**
+  - Maximum 56 characters including emoji
+  - Start with an appropriate emoji followed by a space
+  - Use sentence case, no period at the end
+  - Example: 🚀 Add user authentication system
 
-  Make sure to:
-  - Keep the title under 56 characters and include an appropriate emoji
-  - Summarize the overall accomplishment in 2-3 sentences
-  - List specific details as bullet points (max 160 chars each)
-  - Only include highlights section if there are important code snippets worth showcasing
+  **# What does this PR do?** (heading with single # character)
+  - Write 2-3 complete sentences in paragraph form
+  - Summarize the overall accomplishment and impact
+  - No bullet points in this section
+
+  **# Details** (heading with single # character)
+  - Use markdown bullet points starting with asterisk and space: * 
+  - Each bullet point must be a complete thought
+  - Maximum 160 characters per bullet point
+  - List specific changes, additions, or modifications
+
+  **# Highlights** (heading with single # character, optional section)
+  - Only include if there are important code changes worth showcasing
+  - Use proper markdown code blocks with triple backticks and language identifiers
+  - Format: ```language on first line, code content, closing ``` on last line
+  - Add brief context before each code snippet if needed
+
+  ## Output Requirements
+  - Output ONLY the raw markdown text
+  - Start with the emoji title on the first line
+  - Use literal # characters for headings
+  - Use literal * characters for bullet points
+  - Use literal ``` characters for code blocks
+  - Include blank lines between sections
+  - Do not add any meta-commentary or explanations around the markdown
+  - The output should be ready to copy-paste directly into a PR description
