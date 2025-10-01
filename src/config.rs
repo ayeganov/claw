@@ -353,20 +353,37 @@ You can edit it to change the underlying LLM command.
             })?;
 
             let goals_dir = config_dir.join("goals");
-            let example_goal_dest_dir = goals_dir.join("example");
-            fs::create_dir_all(&example_goal_dest_dir)
-                .context("Failed to create example goal directory")?;
-            let prompt_path = example_goal_dest_dir.join("prompt.yaml");
-            let source_prompt_path = assets_dir.join("goals").join("example").join("prompt.yaml");
-            fs::copy(&source_prompt_path, &prompt_path).with_context(|| {
-                format!(
-                    "Failed to copy example goal from {} to {}",
-                    source_prompt_path.display(),
-                    prompt_path.display()
-                )
-            })?;
+            fs::create_dir_all(&goals_dir).context("Failed to create goals directory")?;
 
-            println!("I've also added an example goal. Try it out by running:");
+            // Copy all goals from assets
+            let assets_goals_dir = assets_dir.join("goals");
+            if assets_goals_dir.is_dir() {
+                for entry in fs::read_dir(&assets_goals_dir)
+                    .context("Failed to read assets goals directory")?
+                {
+                    let entry = entry?;
+                    if entry.file_type()?.is_dir() {
+                        let goal_name = entry.file_name();
+                        let dest_goal_dir = goals_dir.join(&goal_name);
+                        fs::create_dir_all(&dest_goal_dir).with_context(|| {
+                            format!("Failed to create goal directory for {:?}", goal_name)
+                        })?;
+
+                        let source_prompt = entry.path().join("prompt.yaml");
+                        let dest_prompt = dest_goal_dir.join("prompt.yaml");
+                        fs::copy(&source_prompt, &dest_prompt).with_context(|| {
+                            format!(
+                                "Failed to copy goal {:?} from {} to {}",
+                                goal_name,
+                                source_prompt.display(),
+                                dest_prompt.display()
+                            )
+                        })?;
+                    }
+                }
+            }
+
+            println!("I've also added some example goals. Try one out by running:");
             println!("claw example --topic=\"the history of the Rust programming language\"");
             println!("--------------------------------------------------------------------");
         }
