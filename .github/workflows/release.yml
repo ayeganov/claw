@@ -24,7 +24,7 @@ jobs:
           - platform: macos
             os: macos-latest
             format: dmg
-            artifact: claw_*_x64.dmg
+            artifact: claw_*64.dmg
           - platform: windows
             os: windows-latest
             format: wix
@@ -53,8 +53,9 @@ jobs:
       - name: Install WiX Toolset (Windows only)
         if: matrix.platform == 'windows'
         run: |
-          dotnet tool install --global wix --version 4.0.4
-          wix --version
+          choco install wixtoolset -y
+          echo "C:\Program Files (x86)\WiX Toolset v3.14\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          candle.exe -?
 
       - name: Install cargo-packager
         run: cargo install cargo-packager
