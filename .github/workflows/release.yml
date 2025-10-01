@@ -25,10 +25,6 @@ jobs:
             os: macos-latest
             format: dmg
             artifact: claw_*64.dmg
-          - platform: windows
-            os: windows-latest
-            format: wix
-            artifact: claw_*_x64_en-US.msi
 
     steps:
       - name: Checkout code
@@ -107,7 +103,6 @@ jobs:
           files: |
             artifacts/**/*.deb
             artifacts/**/*.dmg
-            artifacts/**/*.msi
           generate_release_notes: true
           draft: false
           prerelease: false
