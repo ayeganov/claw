@@ -20,9 +20,6 @@ tera = "1.19.1"
 serde = { version = "1.0.198", features = ["derive"] }
 serde_yaml = "0.9.34"
 
-# For the interactive goal selection menu (`claw` with no arguments).
-dialoguer = "0.11.0"
-
 # For the TUI goal browser
 ratatui = "0.29.0"
 crossterm = "0.28.1"
