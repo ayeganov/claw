@@ -229,13 +229,16 @@ version = "0.3.2"
 dependencies = [
  "anyhow",
  "clap",
+ "content_inspector",
  "crossterm",
  "directories",
+ "ignore",
  "ratatui",
  "serde",
  "serde_yaml",
  "shlex",
  "tera",
+ "termtree",
  "walkdir",
  "which",
 ]
@@ -258,6 +261,15 @@ dependencies = [
  "rustversion",
  "ryu",
  "static_assertions",
+]
+
+[[package]]
+name = "content_inspector"
+version = "0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b7bda66e858c683005a53a9a60c69a4aca7eeaa45d124526e389f7aec8e62f38"
+dependencies = [
+ "memchr",
 ]
 
 [[package]]
@@ -1243,6 +1255,12 @@ dependencies = [
  "slug",
  "unic-segment",
 ]
+
+[[package]]
+name = "termtree"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8f50febec83f5ee1df3015341d8bd429f2d1cc62bcba7ea2076759d315084683"
 
 [[package]]
 name = "thiserror"

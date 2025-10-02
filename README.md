@@ -25,6 +25,8 @@ Stop wasting time with repetitive setup prompts. With claw, you define a goal on
 
 ⚙️ Dynamic Context Gathering: Execute shell scripts (git diff, ls -R) before a session starts to feed information directly into your prompt avoiding costly tokens.
 
+📁 File Context Management: Pass arbitrary files and directories via --context to include their contents in your prompt, with smart filtering, size limits, and binary detection.
+
 🤖 Agent-Assisted Goal Creation: Use the innovative claw add command to have an LLM agent interactively guide you through creating and refining new goals.
 
 📜 Powerful Templating: Uses the tera engine to inject command-line arguments and script outputs into your prompts.
@@ -91,7 +93,7 @@ The first time you run claw, it will automatically create a global configuration
 ### 1. Running a Goal
 To run a goal, simply provide its name. Any additional arguments are passed into the prompt template.
 
-```
+```bash
 # Run the 'code-review' goal
 claw code-review
 
@@ -99,15 +101,49 @@ claw code-review
 claw generate-component --name="UserProfile" --type="React"
 ```
 
-### 2. Interactive Mode
+### 2. Including File Context
+Use the `--context` (or `-c`) flag to include files and directories in your prompt. This is perfect for code reviews, analysis, or any task that needs file contents.
+
+```bash
+# Include a single file
+claw code-review --context src/main.rs
+
+# Include multiple files
+claw analyze --context file1.txt file2.txt config.json
+
+# Include entire directories (recursive by default)
+claw review --context ./src/ ./tests/
+
+# Limit recursion depth
+claw review --context ./src/ --recurse_depth 2
+
+# Combine with template arguments
+claw review --context ./src/ --lang rust --scope authentication
+```
+
+**What happens:**
+- Files are read and their contents are formatted as markdown
+- Binary files are automatically skipped
+- Respects `.gitignore` patterns
+- Size limits and per-directory file limits are enforced
+- The formatted context is appended to your prompt
+
+**Configuration:** You can customize behavior in `claw.yaml`:
+- `max_file_size_kb`: Maximum file size (default: 1024 KB)
+- `max_files_per_directory`: Maximum files per directory (default: 50)
+- `error_handling_mode`: How to handle errors - `strict`, `flexible`, or `ignore` (default: flexible)
+- `excluded_directories`: Directories to skip (default: .git, node_modules, target, etc.)
+- `excluded_extensions`: File extensions to skip (default: exe, bin, so, etc.)
+
+### 3. Interactive Mode
 If you run claw without any arguments, it will display a menu of all available goals, indicating whether they are from your local project or your global config.
 
 `claw`
 
-### 3. Creating a New Goal (Agent-Assisted)
+### 4. Creating a New Goal (Agent-Assisted)
 The `add` command launches an interactive LLM session to help you write a new prompt.yaml file.
 
-```
+```bash
 # Start a session to create a new goal named 'pr-notes'
 claw add pr-notes
 
@@ -118,7 +154,7 @@ claw add my-project-goal --local
 claw add my-global-goal --global
 ```
 
-### 4. Direct Pass-Through
+### 5. Direct Pass-Through
 To open your underlying LLM directly without any modifications, use the `pass` command.
 
 `claw pass`
@@ -129,11 +165,11 @@ To open your underlying LLM directly without any modifications, use the `pass` c
 `claw` uses a simple configuration system based on YAML files.
 
 ### The `claw.yaml` File
-This file configures which LLM claw should wrap. It's looked for in ./.claw/ first, then ~/.config/claw/.
+This file configures which LLM claw should wrap and how context files are processed. It's looked for in ./.claw/ first, then ~/.config/claw/.
 
-Example ~/.config/claw/claw.yaml:
+Example `~/.config/claw/claw.yaml`:
 
-```
+```yaml
 # The executable name of the LLM CLI tool in your PATH.
 llm_command: "claude"
 
@@ -142,6 +178,40 @@ llm_command: "claude"
 #
 # Example for gemini-cli:
 # prompt_arg_template: "-i {{prompt}}"
+
+# Context Management 2.0 Configuration
+# These settings control how claw processes files passed via --context parameter
+
+# Maximum file size in KB that can be included as context (default: 1024 = 1 MB)
+max_file_size_kb: 1024
+
+# Maximum number of files per directory when scanning (default: 50)
+max_files_per_directory: 50
+
+# How to handle errors during context processing (default: flexible)
+# Options:
+#   strict: Fail immediately on any error
+#   flexible: Collect all errors and prompt user for approval before proceeding
+#   ignore: Log warnings but continue processing valid files
+error_handling_mode: flexible
+
+# Directories to exclude when scanning for context files
+excluded_directories:
+  - ".git"
+  - "node_modules"
+  - "target"
+  - ".venv"
+  - "__pycache__"
+
+# File extensions to exclude when scanning for context files
+excluded_extensions:
+  - "exe"
+  - "bin"
+  - "so"
+  - "dylib"
+  - "dll"
+  - "o"
+  - "a"
 ```
 
 ### The `prompt.yaml` File

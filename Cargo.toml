@@ -27,6 +27,15 @@ crossterm = "0.28.1"
 # To efficiently search upwards from the current directory for a `.claw` folder.
 walkdir = "2.5.0"
 
+# For respecting .gitignore patterns when discovering context files.
+ignore = "0.4"
+
+# For detecting binary vs text files.
+content_inspector = "0.2"
+
+# For generating tree visualizations of directory structures.
+termtree = "0.5"
+
 # A robust, cross-platform way to find the user's home/config directory (`~/.config/`).
 directories = "5.0.1"
 

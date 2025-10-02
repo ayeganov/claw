@@ -8,3 +8,39 @@ llm_command: "claude"
 #
 # Example for gemini-cli:
 # prompt_arg_template: "-i {{prompt}}"
+
+# Context Management 2.0 Configuration
+# These settings control how claw processes files passed via --context parameter
+
+# Maximum file size in KB that can be included as context (default: 1024 = 1 MB)
+max_file_size_kb: 3072
+
+# Maximum number of files per directory when scanning (default: 50)
+max_files_per_directory: 50
+
+# How to handle errors during context processing (default: flexible)
+# Options:
+#   strict: Fail immediately on any error
+#   flexible: Collect all errors and prompt user for approval before proceeding
+#   ignore: Log warnings but continue processing valid files
+error_handling_mode: flexible
+
+# Directories to exclude when scanning for context files
+excluded_directories:
+  - ".git"
+  - "node_modules"
+  - "target"
+  - ".venv"
+  - "__pycache__"
+
+# File extensions to exclude when scanning for context files
+excluded_extensions:
+  - "exe"
+  - "bin"
+  - "so"
+  - "dylib"
+  - "dll"
+  - "o"
+  - "a"
+  - "lock"
+  - "pdf"

@@ -21,6 +21,14 @@ pub struct RunArgs {
     #[arg(name = "GOAL")]
     pub goal_name: Option<String>,
 
+    /// Files or directories to include as context.
+    #[arg(short = 'c', long = "context", num_args = 0..)]
+    pub context: Vec<std::path::PathBuf>,
+
+    /// Maximum recursion depth when scanning directories (default: unlimited).
+    #[arg(short = 'd', long = "recurse_depth")]
+    pub recurse_depth: Option<usize>,
+
     /// Arbitrary arguments for the prompt template, e.g., --lang=Python or --lang Python.
     /// All arguments after the goal name are collected here.
     #[arg(last = true)]
