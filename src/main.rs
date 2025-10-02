@@ -1,6 +1,7 @@
 mod cli;
 mod commands;
 mod config;
+mod context;
 mod goal_browser;
 mod runner;
 
@@ -31,7 +32,13 @@ fn main() -> Result<()> {
         }
         None => {
             if let Some(goal_name) = cli.run_args.goal_name {
-                run_goal(&goal_name, &claw_config, &cli.run_args.template_args)?;
+                run_goal(
+                    &goal_name,
+                    &claw_config,
+                    &cli.run_args.template_args,
+                    &cli.run_args.context,
+                    cli.run_args.recurse_depth,
+                )?;
             } else {
                 // No goal was provided, so enter interactive mode.
                 let goals = config::find_all_goals()?;
@@ -42,7 +49,7 @@ fn main() -> Result<()> {
                 // Use the new goal browser TUI
                 let selected_goal_name = goal_browser::run_goal_browser(goals)?;
 
-                run_goal(&selected_goal_name, &claw_config, &Vec::new())?;
+                run_goal(&selected_goal_name, &claw_config, &Vec::new(), &Vec::new(), None)?;
             }
         }
     }
@@ -54,6 +61,8 @@ fn run_goal(
     goal_name: &str,
     claw_config: &config::ClawConfig,
     template_args: &[String],
+    context_paths: &[std::path::PathBuf],
+    recurse_depth: Option<usize>,
 ) -> Result<()> {
     let goal = config::find_and_load_goal(goal_name)?;
     let template_args = cli::parse_template_args(template_args)?;
@@ -83,9 +92,42 @@ fn run_goal(
         .context("Failed to create Tera instance")?;
     tera.add_raw_template("prompt", &goal.config.prompt)
         .context("Failed to add raw template")?;
-    let rendered_prompt = tera
+    let mut rendered_prompt = tera
         .render("prompt", &context)
         .map_err(|e| anyhow::anyhow!("Failed to render prompt for goal '{}': {}", goal_name, e))?;
+
+    // Process file context if --context parameter was provided
+    if !context_paths.is_empty() {
+        let context_config = context::ContextConfig {
+            paths: context_paths.to_vec(),
+            recurse_depth,
+            max_file_size_kb: claw_config.max_file_size_kb.unwrap_or(1024),
+            max_files_per_directory: claw_config.max_files_per_directory.unwrap_or(50),
+            error_handling_mode: claw_config
+                .error_handling_mode
+                .clone()
+                .unwrap_or(config::ErrorHandlingMode::Flexible),
+            excluded_directories: claw_config
+                .excluded_directories
+                .clone()
+                .unwrap_or_else(|| vec![".git".to_string(), "node_modules".to_string(), "target".to_string()]),
+            excluded_extensions: claw_config
+                .excluded_extensions
+                .clone()
+                .unwrap_or_else(|| vec!["exe".to_string(), "bin".to_string(), "so".to_string()]),
+        };
+
+        let files = context::discover_files(&context_config)?;
+        let result = context::validate_and_read_files(files, &context_config);
+
+        // Handle errors based on mode
+        context::handle_errors(&result, &context_config.error_handling_mode)?;
+
+        // Format and append to prompt
+        let context_section = context::format_context(&result, &context_config);
+        rendered_prompt.push_str("\n\n");
+        rendered_prompt.push_str(&context_section);
+    }
 
     runner::run_llm(claw_config, &rendered_prompt)?;
 

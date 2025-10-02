@@ -8,6 +8,18 @@ use std::fmt;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+/// Defines how errors during context processing should be handled.
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum ErrorHandlingMode {
+    /// Fail immediately on any error.
+    Strict,
+    /// Collect all errors and prompt user for approval before proceeding.
+    Flexible,
+    /// Log warnings but continue processing valid files.
+    Ignore,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct ClawConfig {
     /// The executable name of the LLM command-line tool.
@@ -17,6 +29,27 @@ pub struct ClawConfig {
     /// Uses "{{prompt}}" as a placeholder for the rendered prompt.
     #[serde(default = "default_prompt_arg_template")]
     pub prompt_arg_template: String,
+
+    // Context Management 2.0 fields
+    /// Maximum file size in KB that can be included as context.
+    #[serde(default)]
+    pub max_file_size_kb: Option<u64>,
+
+    /// Maximum number of files per directory when scanning.
+    #[serde(default)]
+    pub max_files_per_directory: Option<usize>,
+
+    /// How to handle errors during context processing: "strict", "flexible", or "ignore".
+    #[serde(default)]
+    pub error_handling_mode: Option<ErrorHandlingMode>,
+
+    /// Directories to exclude when scanning for context files.
+    #[serde(default)]
+    pub excluded_directories: Option<Vec<String>>,
+
+    /// File extensions to exclude when scanning for context files.
+    #[serde(default)]
+    pub excluded_extensions: Option<Vec<String>>,
 }
 
 /// Provides the default value for `prompt_arg_template` during deserialization.
@@ -31,6 +64,26 @@ impl Default for ClawConfig {
             // We default to "claude" as it's a common tool with a simple invocation.
             llm_command: "claude".to_string(),
             prompt_arg_template: default_prompt_arg_template(),
+            // Context Management 2.0 defaults
+            max_file_size_kb: Some(1024), // 1 MB
+            max_files_per_directory: Some(50),
+            error_handling_mode: Some(ErrorHandlingMode::Flexible),
+            excluded_directories: Some(vec![
+                ".git".to_string(),
+                "node_modules".to_string(),
+                "target".to_string(),
+                ".venv".to_string(),
+                "__pycache__".to_string(),
+            ]),
+            excluded_extensions: Some(vec![
+                "exe".to_string(),
+                "bin".to_string(),
+                "so".to_string(),
+                "dylib".to_string(),
+                "dll".to_string(),
+                "o".to_string(),
+                "a".to_string(),
+            ]),
         }
     }
 }
