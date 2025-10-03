@@ -1,12 +1,85 @@
 use anyhow::Context as AnyhowContext;
 use anyhow::Result;
 use directories::BaseDirs;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::env;
 use std::fmt;
 use std::fs;
 use std::path::{Path, PathBuf};
+
+/// Helper functions for constructing standard configuration paths.
+mod paths {
+    use std::path::{Path, PathBuf};
+
+    pub fn goal_dir(base_dir: &Path, goal_name: &str) -> PathBuf {
+        base_dir.join("goals").join(goal_name)
+    }
+
+    pub fn goal_prompt(base_dir: &Path, goal_name: &str) -> PathBuf {
+        goal_dir(base_dir, goal_name).join("prompt.yaml")
+    }
+
+    pub fn claw_config(base_dir: &Path) -> PathBuf {
+        base_dir.join("claw.yaml")
+    }
+}
+
+/// Generic function to load and parse a YAML config file.
+///
+/// Returns `Ok(Some(config))` if the file exists and is parsed successfully.
+/// Returns `Ok(None)` if the file does not exist.
+/// Returns `Err` if the file exists but cannot be read or parsed.
+fn load_yaml_config<T>(path: &Path) -> Result<Option<T>>
+where
+    T: for<'de> Deserialize<'de>,
+{
+    if !path.exists() {
+        return Ok(None);
+    }
+
+    let content = fs::read_to_string(path)
+        .with_context(|| format!("Failed to read {}", path.display()))?;
+
+    let config: T = serde_yaml::from_str(&content)
+        .with_context(|| format!("Failed to parse {}", path.display()))?;
+
+    Ok(Some(config))
+}
+
+/// Generic cascading configuration loader.
+///
+/// Searches for a configuration in priority order:
+/// 1. Local repository config
+/// 2. Global user config
+/// 3. Default value (if provided)
+///
+/// The `loader_fn` is called with the base directory to attempt loading the config.
+fn cascade_load_config<T, F>(
+    paths: &ConfigPaths,
+    loader_fn: F,
+    default: Option<T>,
+) -> Result<T>
+where
+    F: Fn(&Path) -> Result<Option<T>>,
+{
+    // Priority 1: Local repository config
+    if let Some(local_path) = &paths.local {
+        if let Some(config) = loader_fn(local_path)? {
+            return Ok(config);
+        }
+    }
+
+    // Priority 2: Global user config
+    if let Some(global_path) = &paths.global {
+        if let Some(config) = loader_fn(global_path)? {
+            return Ok(config);
+        }
+    }
+
+    // Priority 3: Default or error
+    default.ok_or_else(|| anyhow::anyhow!("Configuration not found in local or global paths"))
+}
 
 /// Defines how errors during context processing should be handled.
 #[derive(Debug, Clone, Deserialize, PartialEq)]
@@ -94,6 +167,37 @@ pub enum GoalSource {
     Global,
 }
 
+/// Represents the type of a goal parameter.
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum ParameterType {
+    String,
+    Number,
+    Boolean,
+}
+
+/// Represents a single parameter definition for a goal.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct GoalParameter {
+    /// The name of the parameter (e.g., "scope", "format").
+    pub name: String,
+
+    /// Human-readable description of what this parameter does.
+    pub description: String,
+
+    /// Whether this parameter must be provided by the user.
+    pub required: bool,
+
+    /// Optional type hint for the parameter (primarily for documentation).
+    #[serde(default)]
+    #[serde(rename = "type")]
+    pub param_type: Option<ParameterType>,
+
+    /// Optional default value for the parameter (only valid if required is false).
+    #[serde(default)]
+    pub default: Option<String>,
+}
+
 /// Represents the structure of a `prompt.yaml` file.
 ///
 /// This struct is derived with `serde::Deserialize` to allow for automatic
@@ -105,6 +209,11 @@ pub struct PromptConfig {
 
     /// An optional one-line description of the goal's purpose.
     pub description: Option<String>,
+
+    /// Optional list of parameters that this goal accepts.
+    /// If not specified, the goal accepts arbitrary parameters.
+    #[serde(default)]
+    pub parameters: Vec<GoalParameter>,
 
     /// A map of script names to the shell commands to be executed.
     /// The key is the name used in the template (e.g., `staged_diff`),
@@ -166,17 +275,8 @@ fn find_global_config_dir() -> Option<PathBuf> {
 /// It returns `Ok(None)` if the `prompt.yaml` file does not exist.
 /// It returns an `Err` if the file exists but cannot be read or parsed.
 pub fn load_goal_config(base_dir: &Path, goal_name: &str) -> Result<Option<PromptConfig>> {
-    let path = base_dir.join("goals").join(goal_name).join("prompt.yaml");
-
-    if !path.exists() {
-        return Ok(None);
-    }
-
-    let content = fs::read_to_string(&path)?;
-    let config: PromptConfig = serde_yaml::from_str(&content)
-        .map_err(|e| anyhow::anyhow!("Failed to parse {}: {}", path.display(), e))?;
-
-    Ok(Some(config))
+    let path = paths::goal_prompt(base_dir, goal_name);
+    load_yaml_config(&path)
 }
 
 /// Represents a successfully loaded goal configuration, including its content
@@ -195,28 +295,21 @@ pub struct LoadedGoal {
 /// 3. Returns an error if the goal is not found in either location.
 pub fn find_and_load_goal(goal_name: &str) -> Result<LoadedGoal> {
     let paths = ConfigPaths::new()?;
+    let goal_name = goal_name.to_string();
 
-    // Priority 1: Search in the local repository config (`.claw/`)
-    if let Some(local_path) = &paths.local {
-        if let Some(config) = load_goal_config(local_path, goal_name)? {
-            let directory = local_path.join("goals").join(goal_name);
-            return Ok(LoadedGoal { config, directory });
-        }
-    }
-
-    // Priority 2: Search in the global user config (`~/.config/claw/`)
-    if let Some(global_path) = &paths.global {
-        if let Some(config) = load_goal_config(global_path, goal_name)? {
-            let directory = global_path.join("goals").join(goal_name);
-            return Ok(LoadedGoal { config, directory });
-        }
-    }
-
-    // If we reach here, the goal was not found in either location.
-    anyhow::bail!(
-        "Goal '{}' not found in local or global configuration.",
-        goal_name
-    );
+    cascade_load_config(
+        &paths,
+        |base_dir| {
+            if let Some(config) = load_goal_config(base_dir, &goal_name)? {
+                let directory = paths::goal_dir(base_dir, &goal_name);
+                Ok(Some(LoadedGoal { config, directory }))
+            } else {
+                Ok(None)
+            }
+        },
+        None,
+    )
+    .with_context(|| format!("Goal '{}' not found in local or global configuration", goal_name))
 }
 
 /// Finds and loads the `claw.yaml` configuration, applying the cascade and defaults.
@@ -227,37 +320,13 @@ pub fn find_and_load_goal(goal_name: &str) -> Result<LoadedGoal> {
 /// This function always returns a valid configuration.
 pub fn find_and_load_claw_config() -> Result<ClawConfig> {
     let paths = ConfigPaths::new()?;
-
-    // Priority 1: Search in the local repository config (`.claw/`)
-    if let Some(local_path) = &paths.local {
-        if let Some(config) = load_claw_config_from_dir(local_path)? {
-            return Ok(config);
-        }
-    }
-
-    // Priority 2: Search in the global user config (`~/.config/claw/`)
-    if let Some(global_path) = &paths.global {
-        if let Some(config) = load_claw_config_from_dir(global_path)? {
-            return Ok(config);
-        }
-    }
-
-    // Priority 3: Fall back to the compiled-in default configuration.
-    Ok(ClawConfig::default())
+    cascade_load_config(&paths, load_claw_config_from_dir, Some(ClawConfig::default()))
 }
 
 /// Helper to attempt loading a `claw.yaml` from a single directory.
 fn load_claw_config_from_dir(base_dir: &Path) -> Result<Option<ClawConfig>> {
-    let path = base_dir.join("claw.yaml");
-    if !path.exists() {
-        return Ok(None);
-    }
-
-    let content = fs::read_to_string(&path)?;
-    let config: ClawConfig = serde_yaml::from_str(&content)
-        .map_err(|e| anyhow::anyhow!("Failed to parse {}: {}", path.display(), e))?;
-
-    Ok(Some(config))
+    let path = paths::claw_config(base_dir);
+    load_yaml_config(&path)
 }
 
 impl fmt::Display for GoalSource {
@@ -277,6 +346,32 @@ pub struct DiscoveredGoal {
     pub config: PromptConfig,
 }
 
+/// Scans a goals directory and returns discovered goals with the given source.
+fn scan_goals_dir(base_dir: &Path, source: GoalSource) -> Result<Vec<DiscoveredGoal>> {
+    let mut discovered = Vec::new();
+    let goals_dir = base_dir.join("goals");
+
+    if !goals_dir.is_dir() {
+        return Ok(discovered);
+    }
+
+    for entry in fs::read_dir(goals_dir)? {
+        let entry = entry?;
+        if entry.file_type()?.is_dir() {
+            let name = entry.file_name().to_string_lossy().to_string();
+            if let Some(config) = load_goal_config(base_dir, &name)? {
+                discovered.push(DiscoveredGoal {
+                    name,
+                    source,
+                    config,
+                });
+            }
+        }
+    }
+
+    Ok(discovered)
+}
+
 /// Scans local and global directories to find all available goals.
 /// Local goals with the same name as global goals will override them.
 pub fn find_all_goals() -> Result<Vec<DiscoveredGoal>> {
@@ -285,42 +380,12 @@ pub fn find_all_goals() -> Result<Vec<DiscoveredGoal>> {
 
     // Priority 1: Find all local goals
     if let Some(local_path) = &paths.local {
-        let local_goals_dir = local_path.join("goals");
-        if local_goals_dir.is_dir() {
-            for entry in fs::read_dir(local_goals_dir)? {
-                let entry = entry?;
-                if entry.file_type()?.is_dir() {
-                    let name = entry.file_name().to_string_lossy().to_string();
-                    if let Some(config) = load_goal_config(local_path, &name)? {
-                        discovered_goals.push(DiscoveredGoal {
-                            name,
-                            source: GoalSource::Local,
-                            config,
-                        });
-                    }
-                }
-            }
-        }
+        discovered_goals.extend(scan_goals_dir(local_path, GoalSource::Local)?);
     }
 
-    // Priority 2: Find all global goals that haven't been seen locally
+    // Priority 2: Find all global goals
     if let Some(global_path) = &paths.global {
-        let global_goals_dir = global_path.join("goals");
-        if global_goals_dir.is_dir() {
-            for entry in fs::read_dir(global_goals_dir)? {
-                let entry = entry?;
-                if entry.file_type()?.is_dir() {
-                    let name = entry.file_name().to_string_lossy().to_string();
-                    if let Some(config) = load_goal_config(global_path, &name)? {
-                        discovered_goals.push(DiscoveredGoal {
-                            name,
-                            source: GoalSource::Global,
-                            config,
-                        });
-                    }
-                }
-            }
-        }
+        discovered_goals.extend(scan_goals_dir(global_path, GoalSource::Global)?);
     }
 
     // Sort goals alphabetically by name for a clean display
@@ -432,7 +497,7 @@ You can edit it to change the underlying LLM command.
             }
 
             println!("I've also added some example goals. Try one out by running:");
-            println!("claw example --topic=\"the history of the Rust programming language\"");
+            println!("claw example -- --topic=\"the history of the Rust programming language\"");
             println!("--------------------------------------------------------------------");
         }
     }

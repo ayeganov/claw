@@ -3,7 +3,9 @@ mod commands;
 mod config;
 mod context;
 mod goal_browser;
+mod help;
 mod runner;
+mod validation;
 
 use anyhow::{Context as AnyhowContext, Result};
 use clap::Parser;
@@ -27,11 +29,23 @@ fn main() -> Result<()> {
         }) => {
             commands::add::handle_add_command(&name, local, global, &claw_config)?;
         }
+        Some(Subcommands::List { local, global }) => {
+            commands::list::handle_list_command(local, global)?;
+        }
         Some(Subcommands::Pass) => {
             runner::run_pass_through(&claw_config)?;
         }
         None => {
             if let Some(goal_name) = cli.run_args.goal_name {
+                // Check for --explain flag
+                if cli.run_args.explain {
+                    // Show goal-specific help
+                    let goal = config::find_and_load_goal(&goal_name)?;
+                    let help_text = help::format_goal_help(&goal, &goal_name);
+                    println!("{}", help_text);
+                    return Ok(());
+                }
+
                 run_goal(
                     &goal_name,
                     &claw_config,
@@ -57,6 +71,43 @@ fn main() -> Result<()> {
     Ok(())
 }
 
+/// Parses goal arguments into a HashMap.
+/// Supports formats: `--key=value`, `--key value`, and `--flag` (boolean).
+fn parse_goal_args(args: &[String]) -> Result<HashMap<String, String>> {
+    let mut map = HashMap::new();
+    let mut i = 0;
+
+    while i < args.len() {
+        let arg = &args[i];
+        if !arg.starts_with("--") {
+            anyhow::bail!(
+                "Invalid goal argument: '{}'. All goal arguments must be flags starting with '--'.",
+                arg
+            );
+        }
+
+        let key_part = &arg[2..]; // Remove the "--"
+        if let Some((key, value)) = key_part.split_once('=') {
+            // Handles --key=value
+            map.insert(key.to_string(), value.to_string());
+            i += 1;
+        } else {
+            // Handles --key value or --flag (boolean)
+            i += 1;
+            if i >= args.len() || args[i].starts_with("--") {
+                // This is a boolean flag (no value provided)
+                map.insert(key_part.to_string(), "true".to_string());
+            } else {
+                // This has a value
+                let value = &args[i];
+                map.insert(key_part.to_string(), value.to_string());
+                i += 1;
+            }
+        }
+    }
+    Ok(map)
+}
+
 fn run_goal(
     goal_name: &str,
     claw_config: &config::ClawConfig,
@@ -65,7 +116,13 @@ fn run_goal(
     recurse_depth: Option<usize>,
 ) -> Result<()> {
     let goal = config::find_and_load_goal(goal_name)?;
-    let template_args = cli::parse_template_args(template_args)?;
+
+    // Parse template args into HashMap
+    let parsed_args = parse_goal_args(template_args)?;
+
+    // Validate parameters against the goal's parameter definitions
+    let validator = validation::ParameterValidator::new(&goal.config.parameters, goal_name.to_string());
+    let template_args = validator.validate(&parsed_args)?;
 
     // Create a Tera context with Args for rendering context scripts
     let mut context = Context::new();

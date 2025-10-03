@@ -604,6 +604,7 @@ mod tests {
             config: PromptConfig {
                 name: format!("{} Display Name", name),
                 description: Some(format!("{} description", name)),
+                parameters: Vec::new(),
                 context_scripts: HashMap::new(),
                 prompt: "test prompt".to_string(),
             },

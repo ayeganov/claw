@@ -1,5 +1,4 @@
 use clap::{ArgGroup, Args, Parser, Subcommand};
-use std::collections::HashMap;
 
 /// A goal-driven, context-aware wrapper for Large Language Model (LLM) CLIs.
 #[derive(Parser, Debug)]
@@ -29,6 +28,10 @@ pub struct RunArgs {
     #[arg(short = 'd', long = "recurse_depth")]
     pub recurse_depth: Option<usize>,
 
+    /// Show detailed information about the goal's parameters.
+    #[arg(short = 'e', long = "explain")]
+    pub explain: bool,
+
     /// Arbitrary arguments for the prompt template, e.g., --lang=Python or --lang Python.
     /// All arguments after the goal name are collected here.
     #[arg(last = true)]
@@ -51,46 +54,17 @@ pub enum Subcommands {
         #[arg(long)]
         global: bool,
     },
+    /// List all available goals with their descriptions and parameters.
+    #[command(group(ArgGroup::new("filter").args(["local", "global"])))]
+    List {
+        /// Show only local goals from .claw/ directory.
+        #[arg(long)]
+        local: bool,
+
+        /// Show only global goals from ~/.config/claw directory.
+        #[arg(long)]
+        global: bool,
+    },
     /// Execute the underlying LLM CLI directly without any modifications.
     Pass,
-}
-
-/// Parses a vector of string arguments into a HashMap.
-/// Supports formats: `--key=value` and `--key value`.
-pub fn parse_template_args(args: &[String]) -> anyhow::Result<HashMap<String, String>> {
-    let mut map = HashMap::new();
-    let mut i = 0;
-    while i < args.len() {
-        let arg = &args[i];
-        if !arg.starts_with("--") {
-            anyhow::bail!(
-                "Invalid template argument: '{}'. All template arguments must be flags starting with '--'.",
-                arg
-            );
-        }
-
-        let key_part = &arg[2..]; // Remove the "--"
-        if let Some((key, value)) = key_part.split_once('=') {
-            // Handles --key=value
-            map.insert(key.to_string(), value.to_string());
-            i += 1;
-        } else {
-            // Handles --key value
-            i += 1; // Move to the next item, which should be the value
-            if i >= args.len() {
-                anyhow::bail!("Argument '--{}' requires a value.", key_part);
-            }
-            let value = &args[i];
-            if value.starts_with("--") {
-                anyhow::bail!(
-                    "Argument '--{}' requires a value, but found another flag '{}' instead.",
-                    key_part,
-                    value
-                );
-            }
-            map.insert(key_part.to_string(), value.to_string());
-            i += 1;
-        }
-    }
-    Ok(map)
 }
