@@ -1,7 +1,7 @@
 use anyhow::Context as AnyhowContext;
 use anyhow::Result;
 use directories::BaseDirs;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::env;
 use std::fmt;
@@ -94,6 +94,37 @@ pub enum GoalSource {
     Global,
 }
 
+/// Represents the type of a goal parameter.
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum ParameterType {
+    String,
+    Number,
+    Boolean,
+}
+
+/// Represents a single parameter definition for a goal.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct GoalParameter {
+    /// The name of the parameter (e.g., "scope", "format").
+    pub name: String,
+
+    /// Human-readable description of what this parameter does.
+    pub description: String,
+
+    /// Whether this parameter must be provided by the user.
+    pub required: bool,
+
+    /// Optional type hint for the parameter (primarily for documentation).
+    #[serde(default)]
+    #[serde(rename = "type")]
+    pub param_type: Option<ParameterType>,
+
+    /// Optional default value for the parameter (only valid if required is false).
+    #[serde(default)]
+    pub default: Option<String>,
+}
+
 /// Represents the structure of a `prompt.yaml` file.
 ///
 /// This struct is derived with `serde::Deserialize` to allow for automatic
@@ -105,6 +136,11 @@ pub struct PromptConfig {
 
     /// An optional one-line description of the goal's purpose.
     pub description: Option<String>,
+
+    /// Optional list of parameters that this goal accepts.
+    /// If not specified, the goal accepts arbitrary parameters.
+    #[serde(default)]
+    pub parameters: Vec<GoalParameter>,
 
     /// A map of script names to the shell commands to be executed.
     /// The key is the name used in the template (e.g., `staged_diff`),
@@ -432,7 +468,7 @@ You can edit it to change the underlying LLM command.
             }
 
             println!("I've also added some example goals. Try one out by running:");
-            println!("claw example --topic=\"the history of the Rust programming language\"");
+            println!("claw example -- --topic=\"the history of the Rust programming language\"");
             println!("--------------------------------------------------------------------");
         }
     }

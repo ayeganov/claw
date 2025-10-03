@@ -19,9 +19,18 @@ You have been given a final, resolved path to create the new goal's directory.
     a. First, establish the high-level metadata. Ask the user for a human-friendly `name` (defaulting to `{{ goal_name }}`) and a `description`.
     b. Next, determine the context. Ask the user in plain English: "What information or context needs to be gathered from the system before this prompt can run?"
     c. For each piece of context the user describes (e.g., "I need the staged git changes"), YOU will determine the correct shell command (e.g., `git diff --staged`) and create a short, descriptive key for it (e.g., `staged_diff`). Confirm this command and key with the user.
-    d. Once all context scripts are defined, ask the user for the overall **objective** of the main prompt (e.g., "Use the git diff to generate PR notes").
-    e. **Based on this objective and the context keys you created, YOU will write the full `prompt` text yourself, automatically and correctly including the {% raw %} `{{ Context.staged_diff }}` {% endraw %} placeholders where they make sense.**
-    f. Present the complete, generated `prompt.yaml` content to the user for review and refinement.
+    d. **Define Parameters:** Ask the user: "Does this goal need any parameters to customize its behavior when running?" If yes:
+       - For each parameter, gather:
+         * **name**: The parameter identifier (e.g., "scope", "format")
+         * **description**: A clear explanation of what it does
+         * **required**: Is it mandatory? (true/false)
+         * **type**: Optional type hint (string, number, or boolean)
+         * **default**: Optional default value (only for optional parameters)
+       - Explain that parameters can be passed like `claw {{ goal_name }} --scope auth --format json`
+       - Parameters will be available in the prompt template as {% raw %} `{{ Args.parameter_name }}` {% endraw %}
+    e. Once all context scripts and parameters are defined, ask the user for the overall **objective** of the main prompt (e.g., "Use the git diff to generate PR notes").
+    f. **Based on this objective, the context keys you created, and any parameters, YOU will write the full `prompt` text yourself, automatically and correctly including the {% raw %} `{{ Context.staged_diff }}` {% endraw %} and {% raw %} `{{ Args.parameter_name }}` {% endraw %} placeholders where they make sense.**
+    g. Present the complete, generated `prompt.yaml` content to the user for review and refinement.
 3.  **Handle Additional Files (Optional):**
     - After the `prompt.yaml` content is finalized, ask the user if they need any other files for this goal.
 4.  **Execute Commands:** Once the user is fully satisfied with all the generated content, use your agent capabilities to execute the necessary shell commands to create the directory and all files.
@@ -34,6 +43,19 @@ name: "Example Goal Name"
 # A short, one-line description of the goal's purpose. (Optional)
 description: "A brief summary of what this goal does."
 
+# Optional parameters that this goal accepts. (Optional)
+# Each parameter has name, description, required, and optionally type and default.
+parameters:
+  - name: "param_name"
+    description: "What this parameter does"
+    required: true
+    type: string
+  - name: "optional_param"
+    description: "An optional parameter"
+    required: false
+    type: string
+    default: "default_value"
+
 # A map of shell commands to run before the prompt. The output of each
 # command is injected into the main prompt. (Optional)
 # The format is a simple key-value map.
@@ -43,8 +65,10 @@ context_scripts:
 
 # The main prompt template sent to the LLM. (Required)
 # It can use variables from context_scripts like {% raw %} {{ Context.key_name_1 }} {% endraw %}.
+# It can also use parameters like {% raw %} {{ Args.param_name }} {% endraw %}.
 prompt: |
   This is the main prompt text.
   The output of the first script is: {% raw %} {{ Context.key_name_1 }} {% endraw %}
+  The parameter value is: {% raw %} {{ Args.param_name }} {% endraw %}
 
 Begin the conversation now.

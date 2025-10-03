@@ -91,14 +91,18 @@ The first time you run claw, it will automatically create a global configuration
 ## Usage
 
 ### 1. Running a Goal
-To run a goal, simply provide its name. Any additional arguments are passed into the prompt template.
+To run a goal, simply provide its name. Goal parameters are passed after `--` and are available in the prompt template.
 
 ```bash
 # Run the 'code-review' goal
 claw code-review
 
-# Pass arguments to the prompt template
-claw generate-component --name="UserProfile" --type="React"
+# Pass parameters to the prompt template
+claw generate-component -- --name="UserProfile" --type="React"
+
+# View goal-specific help and parameters
+claw generate-component --explain
+claw generate-component -e
 ```
 
 ### 2. Including File Context
@@ -117,8 +121,8 @@ claw review --context ./src/ ./tests/
 # Limit recursion depth
 claw review --context ./src/ --recurse_depth 2
 
-# Combine with template arguments
-claw review --context ./src/ --lang rust --scope authentication
+# Combine with goal parameters (note the -- separator)
+claw review --context ./src/ -- --lang rust --scope authentication
 ```
 
 **What happens:**
@@ -135,12 +139,26 @@ claw review --context ./src/ --lang rust --scope authentication
 - `excluded_directories`: Directories to skip (default: .git, node_modules, target, etc.)
 - `excluded_extensions`: File extensions to skip (default: exe, bin, so, etc.)
 
-### 3. Interactive Mode
+### 3. Listing Goals
+Use the `list` command to see all available goals and their parameters:
+
+```bash
+# List all goals
+claw list
+
+# List only local goals
+claw list --local
+
+# List only global goals
+claw list --global
+```
+
+### 4. Interactive Mode
 If you run claw without any arguments, it will display a menu of all available goals, indicating whether they are from your local project or your global config.
 
 `claw`
 
-### 4. Creating a New Goal (Agent-Assisted)
+### 5. Creating a New Goal (Agent-Assisted)
 The `add` command launches an interactive LLM session to help you write a new prompt.yaml file.
 
 ```bash
@@ -154,7 +172,9 @@ claw add my-project-goal --local
 claw add my-global-goal --global
 ```
 
-### 5. Direct Pass-Through
+The agent will guide you through defining parameters if your goal needs them.
+
+### 6. Direct Pass-Through
 To open your underlying LLM directly without any modifications, use the `pass` command.
 
 `claw pass`
@@ -219,12 +239,25 @@ Each goal is defined by a prompt.yaml file located in a subdirectory of goals/.
 
 Example `~/.config/claw/goals/pr-notes/prompt.yaml`:
 
-```
+```yaml
 # A user-friendly name for display in lists.
 name: "Pull Request Notes"
 
 # A short, one-line description of the goal's purpose.
 description: "Generates PR notes based on changes in the current branch."
+
+# Optional: Define parameters that this goal accepts
+parameters:
+  - name: scope
+    description: "The scope or focus area of the PR"
+    required: true
+    type: string
+
+  - name: format
+    description: "Output format for the notes"
+    required: false
+    type: string
+    default: "markdown"
 
 # A map of shell commands to run before the prompt.
 # The output of each command is injected into the main prompt.
@@ -239,7 +272,8 @@ prompt: |
   You are an expert at writing release notes. Based on the following git diff,
   please generate concise PR notes for a pull request.
 
-  The scope of this PR is: {{ Args.scope | default(value="general") }}
+  The scope of this PR is: {{ Args.scope }}
+  Format: {{ Args.format }}
 
   Changed Files:
   {{ Context.file_list }}
@@ -251,6 +285,18 @@ prompt: |
   --- END DIFF ---
 
   Please provide a title, a short summary, and a bulleted list of detailed changes.
+```
+
+**Using this goal:**
+```bash
+# View available parameters
+claw pr-notes --explain
+
+# Run with required parameter
+claw pr-notes -- --scope authentication
+
+# Run with optional parameters
+claw pr-notes -- --scope api --format json
 ```
 
 
