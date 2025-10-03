@@ -193,7 +193,7 @@ mod tests {
         let help = format_goal_help(&goal, "test-goal");
         assert!(help.contains("Test Goal"));
         assert!(help.contains("A test goal"));
-        assert!(help.contains("accepts arbitrary parameters"));
+        assert!(help.contains("didn't define any parameters"));
     }
 
     #[test]
