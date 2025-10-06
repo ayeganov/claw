@@ -1,0 +1,156 @@
+name: "implement"
+
+description: "Implement a software specification following project standards and language idioms"
+
+parameters:
+  - name: "spec"
+    description: "Path to the specification document (markdown, text, or other readable format)"
+    required: true
+    type: string
+
+  - name: "language"
+    description: "Target programming language (auto-detected if not specified)"
+    required: false
+    type: string
+
+  - name: "style_guide"
+    description: "Path to custom style guide (overrides auto-detected guides)"
+    required: false
+    type: string
+
+context_scripts:
+  # Detect primary language from repo if not specified
+  detected_language: |
+    LANG_ARG="{{ Args.language | default(value='') }}"
+    if [ -n "$LANG_ARG" ]; then
+      echo "$LANG_ARG"
+    else
+      # Auto-detect from common config files and extensions
+      if [ -f "Cargo.toml" ]; then echo "rust"
+      elif [ -f "package.json" ]; then echo "javascript"
+      elif [ -f "go.mod" ]; then echo "go"
+      elif [ -f "pyproject.toml" ] || [ -f "setup.py" ]; then echo "python"
+      elif [ -f "pom.xml" ]; then echo "java"
+      elif [ -f "build.gradle" ] || [ -f "build.gradle.kts" ]; then echo "kotlin"
+      elif [ -f "Gemfile" ]; then echo "ruby"
+      elif [ -f "composer.json" ]; then echo "php"
+      elif ls *.csproj >/dev/null 2>&1; then echo "csharp"
+      else
+        # Fallback: count file extensions
+        find . -type f \( -name "*.rs" -o -name "*.py" -o -name "*.js" -o -name "*.go" -o -name "*.java" \) 2>/dev/null |
+        sed 's/.*\.//' | sort | uniq -c | sort -rn | head -1 | awk '{print $2}' | tr -d '\n'
+      fi
+    fi
+
+  # Load style guide with cascade
+  style_guide_content: |
+    LANG_ARG="{{ Args.language | default(value='') }}"
+    STYLE_ARG="{{ Args.style_guide | default(value='') }}"
+
+    # Determine language
+    if [ -n "$LANG_ARG" ]; then
+      LANG="$LANG_ARG"
+    else
+      if [ -f "Cargo.toml" ]; then LANG="rust"
+      elif [ -f "package.json" ]; then LANG="javascript"
+      elif [ -f "go.mod" ]; then LANG="go"
+      elif [ -f "pyproject.toml" ] || [ -f "setup.py" ]; then LANG="python"
+      elif [ -f "pom.xml" ]; then LANG="java"
+      elif [ -f "build.gradle" ] || [ -f "build.gradle.kts" ]; then LANG="kotlin"
+      elif [ -f "Gemfile" ]; then LANG="ruby"
+      elif [ -f "composer.json" ]; then LANG="php"
+      elif ls *.csproj >/dev/null 2>&1; then LANG="csharp"
+      else
+        LANG=$(find . -type f \( -name "*.rs" -o -name "*.py" -o -name "*.js" -o -name "*.go" -o -name "*.java" \) 2>/dev/null |
+               sed 's/.*\.//' | sort | uniq -c | sort -rn | head -1 | awk '{print $2}')
+      fi
+    fi
+
+    # Try to load style guide in cascade order
+    if [ -n "$STYLE_ARG" ] && [ -f "$STYLE_ARG" ]; then
+      cat "$STYLE_ARG"
+    elif [ -n "$LANG" ] && [ -f ".claw/style-guides/${LANG}.md" ]; then
+      cat ".claw/style-guides/${LANG}.md"
+    elif [ -n "$LANG" ] && [ -f "$HOME/.config/claw/style-guides/${LANG}.md" ]; then
+      cat "$HOME/.config/claw/style-guides/${LANG}.md"
+    elif [ -f ".claw/style-guides/default.md" ]; then
+      cat ".claw/style-guides/default.md"
+    elif [ -f "$HOME/.config/claw/style-guides/default.md" ]; then
+      cat "$HOME/.config/claw/style-guides/default.md"
+    else
+      echo "No style guide found. Using language best practices."
+    fi
+
+  project_structure: |
+    echo "=== Project Structure ==="
+    tree -L 3 -I 'node_modules|target|dist|build|__pycache__|.git' 2>/dev/null || \
+    find . -type f -not -path '*/\.*' -not -path '*/node_modules/*' -not -path '*/target/*' | head -50
+
+  # Load the specification content
+  spec_content: |
+    cat "{{ Args.spec }}"
+
+prompt: |
+  # Implementation Task
+
+  You are about to receive a detailed specification for a software project that will be implemented in **{{ Context.detected_language }}**.
+
+  Your role is to act as an expert {{ Context.detected_language }} developer and a collaborative coding partner. Your sole mission is to implement the project precisely as described in the specification document.
+
+  ## Guiding Principles
+
+  ### 1. The Specification is Law
+  The provided specification is your single source of truth. Adhere strictly to its requirements, features, and constraints. Do not introduce new features or deviate from the described behavior. If you encounter a genuine ambiguity in the specification, you may ask for clarification, but otherwise, treat it as complete and correct.
+
+  ### 2. Think in Modules
+  We will build this application step-by-step in a structured manner. Analyze the specification and propose the implementation in logical chunks, starting with the foundation and building up. A typical workflow should include:
+
+  - **Project Setup**: Begin with configuration files and dependency management
+  - **Core Data Structures**: Define the types, models, and interfaces
+  - **Core Logic**: Implement the business logic and algorithms
+  - **Integration Points**: Connect components and handle I/O
+  - **Interface Layer**: Implement the user-facing interface (CLI, API, UI, etc.)
+  - **Error Handling**: Ensure robust error handling throughout
+
+  The exact sequence should be derived from the specification's Implementation Plan section.
+
+  ### 3. Follow Project Standards
+  {{ Context.style_guide_content }}
+
+  ### 4. Write Idiomatic, Production-Quality Code
+  Produce clean, efficient, and well-commented code that follows {{ Context.detected_language }} best practices and idioms. Your code should be:
+  - **Readable**: Clear naming, appropriate comments, logical structure
+  - **Maintainable**: Modular design, separation of concerns, DRY principles
+  - **Robust**: Comprehensive error handling, input validation, edge case coverage
+  - **Testable**: Designed for easy unit and integration testing
+
+  ### 5. Be a Proactive Partner
+  For each step, present the code for the specific module or component we are building. Briefly explain your implementation choices and how they align with the specification. We will work together to build the complete application, file by file or module by module.
+
+  ---
+
+  ## Current Project Context
+
+  **Detected Language**: {{ Context.detected_language }}
+
+  **Project Structure**:
+  {{ Context.project_structure }}
+
+  ---
+
+  ## Specification Document
+
+  {{ Context.spec_content }}
+
+  ---
+
+  ## Your Task
+
+  Please confirm you have understood these instructions and the specification. Then:
+
+  1. **Analyze** the specification and identify the logical modules/components
+  2. **Propose** an implementation sequence based on the Implementation Plan
+  3. **Begin** with the first foundational step (typically project setup/configuration)
+
+  For each step, provide complete, production-ready code with explanations of your design decisions.
+
