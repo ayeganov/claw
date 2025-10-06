@@ -54,16 +54,18 @@ fn main() -> Result<()> {
                     cli.run_args.recurse_depth,
                 )?;
             } else {
+                println!("No goal given");
+                commands::list::handle_list_command(false, false)?;
                 // No goal was provided, so enter interactive mode.
-                let goals = config::find_all_goals()?;
-                if goals.is_empty() {
-                    anyhow::bail!("No goals found. Add a goal using `claw add <goal_name>`.");
-                }
-
-                // Use the new goal browser TUI
-                let selected_goal_name = goal_browser::run_goal_browser(goals)?;
-
-                run_goal(&selected_goal_name, &claw_config, &Vec::new(), &Vec::new(), None)?;
+                //                let goals = config::find_all_goals()?;
+                //                if goals.is_empty() {
+                //                    anyhow::bail!("No goals found. Add a goal using `claw add <goal_name>`.");
+                //                }
+                //
+                //                // Use the new goal browser TUI
+                //                let selected_goal_name = goal_browser::run_goal_browser(goals)?;
+                //
+                //                run_goal(&selected_goal_name, &claw_config, &Vec::new(), &Vec::new(), None)?;
             }
         }
     }
@@ -121,7 +123,8 @@ fn run_goal(
     let parsed_args = parse_goal_args(template_args)?;
 
     // Validate parameters against the goal's parameter definitions
-    let validator = validation::ParameterValidator::new(&goal.config.parameters, goal_name.to_string());
+    let validator =
+        validation::ParameterValidator::new(&goal.config.parameters, goal_name.to_string());
     let template_args = validator.validate(&parsed_args)?;
 
     // Create a Tera context with Args for rendering context scripts
@@ -164,10 +167,13 @@ fn run_goal(
                 .error_handling_mode
                 .clone()
                 .unwrap_or(config::ErrorHandlingMode::Flexible),
-            excluded_directories: claw_config
-                .excluded_directories
-                .clone()
-                .unwrap_or_else(|| vec![".git".to_string(), "node_modules".to_string(), "target".to_string()]),
+            excluded_directories: claw_config.excluded_directories.clone().unwrap_or_else(|| {
+                vec![
+                    ".git".to_string(),
+                    "node_modules".to_string(),
+                    "target".to_string(),
+                ]
+            }),
             excluded_extensions: claw_config
                 .excluded_extensions
                 .clone()
