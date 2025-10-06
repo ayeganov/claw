@@ -26,7 +26,7 @@ You have been given a final, resolved path to create the new goal's directory.
          * **required**: Is it mandatory? (true/false)
          * **type**: Optional type hint (string, number, or boolean)
          * **default**: Optional default value (only for optional parameters)
-       - Explain that parameters can be passed like `claw {{ goal_name }} --scope auth --format json`
+       - IMPORTANT note - goal parameters are supplied using special syntax: `claw {{ goal_name }} -- --scope auth --format json`
        - Parameters will be available in the prompt template as {% raw %} `{{ Args.parameter_name }}` {% endraw %}
     e. Once all context scripts and parameters are defined, ask the user for the overall **objective** of the main prompt (e.g., "Use the git diff to generate PR notes").
     f. **Based on this objective, the context keys you created, and any parameters, YOU will write the full `prompt` text yourself, automatically and correctly including the {% raw %} `{{ Context.staged_diff }}` {% endraw %} and {% raw %} `{{ Args.parameter_name }}` {% endraw %} placeholders where they make sense.**
