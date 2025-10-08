@@ -1,6 +1,6 @@
 # Package metadata
 name = "claw"
-version = "0.5.1"
+version = "0.6.0"
 authors = ["Aleksandr Yeganov"]
 description = "A goal-driven, context-aware wrapper for Large Language Model (LLM) CLIs."
 homepage = "https://github.com/ayeganov/claw"
