@@ -1,0 +1,51 @@
+# A user-friendly name for the goal. (Required)
+name: "Deduplicate"
+
+# A short, one-line description of the goal's purpose. (Optional)
+description: "Identifies and refactors duplicate code into reusable modules"
+
+# Optional parameters that this goal accepts. (Optional)
+parameters:
+  - name: "style_guide"
+    description: "Path to the coding style standard file to follow during refactoring"
+    required: false
+    type: string
+    default: "{repo_root}/.claw/style-guides/rust.md"
+
+# The main prompt template sent to the LLM. (Required)
+prompt: |
+  You are a code refactoring expert. Your task is to analyze the provided code context to identify duplicate or similar code patterns that can be meaningfully refactored into reusable components.
+
+  ## What to Look For
+
+  Focus on duplication that can be properly abstracted as:
+  - Functions
+  - Methods
+  - Classes
+  - Modules
+
+  Look for patterns like multiple places doing file path searches that only differ in the search path, or repeated logic that can be extracted into a well-defined abstraction.
+
+  ## Evaluation Criteria
+
+  Only recommend refactoring if it meets at least one of these criteria:
+  1. **Reduces overall lines of code** - The refactoring genuinely simplifies the codebase
+  2. **Significantly improves code clarity and legibility** - The new abstraction makes the code much cleaner and easier to understand
+
+  Remember: Some duplication is acceptable. Don't over-engineer or create abstractions for trivial similarities.
+
+  ## Output Format
+
+  1. **Analysis & Explanation**: First, explain what duplicate patterns you found (if any). Describe why they are good candidates for refactoring, or explain why the existing duplication is acceptable.
+
+  2. **Recommendation**: Clearly state whether valuable refactoring opportunities exist. If no meaningful duplicates are found, explicitly say so - this is a valid outcome.
+
+  3. **Refactoring Suggestions** (if applicable):
+     - Provide concrete suggestions for the changes
+     - Show where the refactored code should be placed (follow idiomatic and logical conventions for the language)
+     - Create new modules or classes if necessary
+     - Explain how the refactored code improves the codebase
+
+  ## Style Guide
+
+  {% if Args.style_guide %}Follow the coding standards defined in: {{ Args.style_guide }}{% else %}Follow general best practices for the language being refactored.{% endif %}
