@@ -35,6 +35,21 @@ fn main() -> Result<()> {
         Some(Subcommands::Pass) => {
             runner::run_pass_through(&claw_config)?;
         }
+        Some(Subcommands::DryRun {
+            goal_name,
+            output,
+            common,
+        }) => {
+            let rendered_prompt = render_goal_prompt(
+                &goal_name,
+                &claw_config,
+                &common.template_args,
+                &common.context,
+                common.recurse_depth,
+            )?;
+
+            commands::dry_run::handle_dry_run_command(output.as_ref(), &rendered_prompt)?;
+        }
         None => {
             if let Some(goal_name) = cli.run_args.goal_name {
                 // Check for --explain flag
@@ -49,9 +64,9 @@ fn main() -> Result<()> {
                 run_goal(
                     &goal_name,
                     &claw_config,
-                    &cli.run_args.template_args,
-                    &cli.run_args.context,
-                    cli.run_args.recurse_depth,
+                    &cli.run_args.common.template_args,
+                    &cli.run_args.common.context,
+                    cli.run_args.common.recurse_depth,
                 )?;
             } else {
                 println!("No goal given");
@@ -110,13 +125,33 @@ fn parse_goal_args(args: &[String]) -> Result<HashMap<String, String>> {
     Ok(map)
 }
 
-fn run_goal(
+/// Renders a goal's prompt with all context, scripts, and file context applied.
+///
+/// This function performs all the steps needed to generate the final prompt that
+/// would be sent to the LLM, including:
+/// - Loading and validating the goal
+/// - Parsing and validating template arguments
+/// - Executing context scripts
+/// - Rendering the prompt template with Tera
+/// - Adding file context if specified
+///
+/// # Arguments
+/// * `goal_name` - Name of the goal to render
+/// * `claw_config` - Configuration for context settings
+/// * `template_args` - Template arguments from command line
+/// * `context_paths` - File paths to include as context
+/// * `recurse_depth` - Directory recursion depth
+///
+/// # Returns
+/// * `Ok(String)` - The fully rendered prompt
+/// * `Err` - If any step fails (goal not found, validation errors, script failures, etc.)
+fn render_goal_prompt(
     goal_name: &str,
     claw_config: &config::ClawConfig,
     template_args: &[String],
     context_paths: &[std::path::PathBuf],
     recurse_depth: Option<usize>,
-) -> Result<()> {
+) -> Result<String> {
     let goal = config::find_and_load_goal(goal_name)?;
 
     // Parse template args into HashMap
@@ -191,6 +226,24 @@ fn run_goal(
         rendered_prompt.push_str("\n\n");
         rendered_prompt.push_str(&context_section);
     }
+
+    Ok(rendered_prompt)
+}
+
+fn run_goal(
+    goal_name: &str,
+    claw_config: &config::ClawConfig,
+    template_args: &[String],
+    context_paths: &[std::path::PathBuf],
+    recurse_depth: Option<usize>,
+) -> Result<()> {
+    let rendered_prompt = render_goal_prompt(
+        goal_name,
+        claw_config,
+        template_args,
+        context_paths,
+        recurse_depth,
+    )?;
 
     runner::run_llm(claw_config, &rendered_prompt)?;
 

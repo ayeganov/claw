@@ -12,14 +12,9 @@ pub struct Cli {
     pub run_args: RunArgs,
 }
 
-/// The run command arguments, flattened into the main CLI struct.
-/// This allows `claw [goal_name]` to work without a `run` subcommand.
+/// Common arguments shared between run and dry-run commands.
 #[derive(Args, Debug)]
-pub struct RunArgs {
-    /// Name of the goal to run.
-    #[arg(name = "GOAL")]
-    pub goal_name: Option<String>,
-
+pub struct CommonGoalArgs {
     /// Files or directories to include as context.
     #[arg(short = 'c', long = "context", num_args = 0..)]
     pub context: Vec<std::path::PathBuf>,
@@ -28,14 +23,26 @@ pub struct RunArgs {
     #[arg(short = 'd', long = "recurse_depth")]
     pub recurse_depth: Option<usize>,
 
-    /// Show detailed information about the goal's parameters.
-    #[arg(short = 'e', long = "explain")]
-    pub explain: bool,
-
     /// Arbitrary arguments for the prompt template, e.g., --lang=Python or --lang Python.
     /// All arguments after the goal name are collected here.
     #[arg(last = true)]
     pub template_args: Vec<String>,
+}
+
+/// The run command arguments, flattened into the main CLI struct.
+/// This allows `claw [goal_name]` to work without a `run` subcommand.
+#[derive(Args, Debug)]
+pub struct RunArgs {
+    /// Name of the goal to run.
+    #[arg(name = "GOAL")]
+    pub goal_name: Option<String>,
+
+    /// Show detailed information about the goal's parameters.
+    #[arg(short = 'e', long = "explain")]
+    pub explain: bool,
+
+    #[command(flatten)]
+    pub common: CommonGoalArgs,
 }
 
 #[derive(Subcommand, Debug)]
@@ -67,4 +74,17 @@ pub enum Subcommands {
     },
     /// Execute the underlying LLM CLI directly without any modifications.
     Pass,
+    /// Render a goal's prompt without executing the LLM.
+    DryRun {
+        /// Name of the goal to render.
+        #[arg(required = true)]
+        goal_name: String,
+
+        /// Optional file path to write the rendered prompt.
+        #[arg(short = 'o', long = "output")]
+        output: Option<std::path::PathBuf>,
+
+        #[command(flatten)]
+        common: CommonGoalArgs,
+    },
 }

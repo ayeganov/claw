@@ -31,7 +31,7 @@ Stop wasting time with repetitive setup prompts. With claw, you define a goal on
 
 📜 Powerful Templating: Uses the tera engine to inject command-line arguments and script outputs into your prompts.
 
-✅ Interactive Mode: Run claw with no arguments to get a clean, interactive menu of all available goals.
+🔍 Dry-Run Mode: Preview the exact prompt that will be sent to the LLM with claw dry-run, perfect for debugging templates and context scripts.
 
 ### Prerequisites
 Before using claw, you must have an underlying LLM command-line tool installed and available in your system's PATH. `claw` is a wrapper and does not include an LLM itself.
@@ -60,7 +60,8 @@ sudo dpkg -i claw_VERSION_amd64.deb
 # Download the .dmg file
 # Open the DMG and drag claw.app to /Applications
 
-# Add to PATH by creating a symlink
+# Add to PATH by creating a symlink. I don't have a proper developer license for MacOS, so the binary is not signed
+xattr -r -d com.apple.quarantine /Applications/claw.app/
 sudo ln -s /Applications/claw.app/Contents/MacOS/claw /usr/local/bin/claw
 ```
 
@@ -68,13 +69,6 @@ sudo ln -s /Applications/claw.app/Contents/MacOS/claw /usr/local/bin/claw
 ```bash
 # Download the .msi installer and run it
 # The installer will add claw to your PATH automatically
-```
-
-#### From crates.io
-Once `claw` is published, you can install it directly from crates.io:
-
-```bash
-cargo install claw
 ```
 
 #### From Source
@@ -140,23 +134,55 @@ claw review --context ./src/ -- --lang rust --scope authentication
 - `excluded_extensions`: File extensions to skip (default: exe, bin, so, etc.)
 
 ### 3. Listing Goals
-Use the `list` command to see all available goals and their parameters:
+View all available goals and their parameters:
 
 ```bash
-# List all goals
+# List all goals (local and global)
 claw list
 
-# List only local goals
+# Or simply run claw with no arguments
+claw
+
+# List only local goals from .claw/ directory
 claw list --local
 
-# List only global goals
+# List only global goals from ~/.config/claw/
 claw list --global
 ```
 
-### 4. Interactive Mode
-If you run claw without any arguments, it will display a menu of all available goals, indicating whether they are from your local project or your global config.
+### 4. Dry-Run Mode (Preview Prompts)
+Use `dry-run` to see exactly what prompt will be sent to the LLM without actually executing it. Perfect for debugging templates, verifying context scripts, and reviewing prompts before execution.
 
-`claw`
+```bash
+# Preview the rendered prompt to stdout
+claw dry-run code-review
+
+# Save the prompt to a file for inspection
+claw dry-run code-review --output prompt.txt
+claw dry-run code-review -o prompt.txt
+
+# Dry-run with parameters
+claw dry-run generate-tests -- --language rust --framework pytest
+
+# Dry-run with file context
+claw dry-run analyze-code --context src/main.rs src/lib.rs
+
+# Dry-run with all features combined
+claw dry-run review \
+    --context ./src/ \
+    --recurse_depth 2 \
+    --output review_prompt.txt \
+    -- --scope authentication --format markdown
+```
+
+**Use cases:**
+- Debug goal templates and variable substitution
+- Verify context scripts produce expected output
+- Review prompts before sending to LLM
+- Save prompts for documentation or testing
+- Validate parameter handling without consuming API credits
+
+**Note:** Dry-run executes all context scripts and processes file context exactly as a normal run would, ensuring you see the real prompt that will be sent.
 
 ### 5. Creating a New Goal (Agent-Assisted)
 The `add` command launches an interactive LLM session to help you write a new prompt.yaml file.
@@ -177,9 +203,10 @@ The agent will guide you through defining parameters if your goal needs them.
 ### 6. Direct Pass-Through
 To open your underlying LLM directly without any modifications, use the `pass` command.
 
-`claw pass`
-
+```bash
+claw pass
 # This is equivalent to just running 'claude' or 'gemini'
+```
 
 ## Configuration
 `claw` uses a simple configuration system based on YAML files.
