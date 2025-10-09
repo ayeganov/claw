@@ -1,6 +1,6 @@
 [package]
 name = "claw"
-version = "0.7.0"
+version = "0.8.0"
 edition = "2024"
 description = "A goal-driven, context-aware wrapper for Large Language Model (LLM) CLIs."
 license = "MIT"
@@ -44,6 +44,13 @@ directories = "5.0.1"
 anyhow = "1.0.82"
 which = "8.0.0"
 shlex = "1.3.0"
+
+# For advanced file operations like recursive directory copying.
+fs_extra = "1.3"
+
+[build-dependencies]
+# For copying assets during build
+fs_extra = "1.3"
 
 [dev-dependencies]
 tempfile = "3.8"

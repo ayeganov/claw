@@ -38,8 +38,8 @@ where
         return Ok(None);
     }
 
-    let content = fs::read_to_string(path)
-        .with_context(|| format!("Failed to read {}", path.display()))?;
+    let content =
+        fs::read_to_string(path).with_context(|| format!("Failed to read {}", path.display()))?;
 
     let config: T = serde_yaml::from_str(&content)
         .with_context(|| format!("Failed to parse {}", path.display()))?;
@@ -55,11 +55,7 @@ where
 /// 3. Default value (if provided)
 ///
 /// The `loader_fn` is called with the base directory to attempt loading the config.
-fn cascade_load_config<T, F>(
-    paths: &ConfigPaths,
-    loader_fn: F,
-    default: Option<T>,
-) -> Result<T>
+fn cascade_load_config<T, F>(paths: &ConfigPaths, loader_fn: F, default: Option<T>) -> Result<T>
 where
     F: Fn(&Path) -> Result<Option<T>>,
 {
@@ -309,7 +305,12 @@ pub fn find_and_load_goal(goal_name: &str) -> Result<LoadedGoal> {
         },
         None,
     )
-    .with_context(|| format!("Goal '{}' not found in local or global configuration", goal_name))
+    .with_context(|| {
+        format!(
+            "Goal '{}' not found in local or global configuration",
+            goal_name
+        )
+    })
 }
 
 /// Finds and loads the `claw.yaml` configuration, applying the cascade and defaults.
@@ -320,7 +321,11 @@ pub fn find_and_load_goal(goal_name: &str) -> Result<LoadedGoal> {
 /// This function always returns a valid configuration.
 pub fn find_and_load_claw_config() -> Result<ClawConfig> {
     let paths = ConfigPaths::new()?;
-    cascade_load_config(&paths, load_claw_config_from_dir, Some(ClawConfig::default()))
+    cascade_load_config(
+        &paths,
+        load_claw_config_from_dir,
+        Some(ClawConfig::default()),
+    )
 }
 
 /// Helper to attempt loading a `claw.yaml` from a single directory.
@@ -417,7 +422,7 @@ fn find_assets_dir() -> Result<PathBuf> {
     for path in &potential_paths {
         let assets_dir = exe_dir.join(path);
         if assets_dir.is_dir() {
-            return Ok(assets_dir);
+            return Ok(assets_dir.canonicalize()?);
         }
     }
 
@@ -427,79 +432,75 @@ fn find_assets_dir() -> Result<PathBuf> {
     );
 }
 
+/// Checks if a directory is empty (contains no files or subdirectories).
+///
+/// Returns `Ok(true)` if the directory doesn't exist or is empty.
+/// Returns `Ok(false)` if the directory contains any entries.
+/// Returns `Err` if the directory cannot be read.
+fn is_directory_empty(path: &Path) -> Result<bool> {
+    // If directory doesn't exist, consider it "empty"
+    if !path.exists() {
+        return Ok(true);
+    }
+
+    // Read directory and check if it has any entries
+    let mut entries = fs::read_dir(path)
+        .with_context(|| format!("Failed to read directory: {}", path.display()))?;
+
+    // If no entries, it's empty
+    Ok(entries.next().is_none())
+}
+
 pub fn ensure_global_config_exists() -> Result<()> {
     if let Some(base_dirs) = BaseDirs::new() {
         let config_dir = base_dirs.config_dir().join("claw");
-        // If the main config directory doesn't exist, we assume it's a first run.
-        if !config_dir.exists() {
-            println!(
-                "
+
+        // Create the config directory if it doesn't exist
+        fs::create_dir_all(&config_dir).with_context(|| {
+            format!(
+                "Failed to create claw config directory at {}",
+                config_dir.display()
+            )
+        })?;
+
+        // Check if directory is empty - only proceed with setup if it is
+        if !is_directory_empty(&config_dir)? {
+            // Directory already has content, skip setup
+            return Ok(());
+        }
+
+        // This is a first-time setup - show welcome message
+        println!(
+            "
 Welcome to claw! 🐾
 This looks like your first time. I'm creating a global config directory for you at:
 {}
 
-I've created a `claw.yaml` file there to get you started.
-You can edit it to change the underlying LLM command.
+I've copied the default configuration and example goals to get you started.
+You can edit claw.yaml to change the underlying LLM command.
 ",
-                config_dir.display()
-            );
+            config_dir.display()
+        );
 
-            fs::create_dir_all(&config_dir).with_context(|| {
-                format!(
-                    "Failed to create claw config directory at {}",
-                    config_dir.display()
-                )
-            })?;
+        // Find the bundled assets directory
+        let assets_dir =
+            find_assets_dir().context("Failed to locate assets for first-time setup")?;
 
-            let assets_dir =
-                find_assets_dir().context("Failed to locate assets for first-time setup")?;
+        // Configure copy options for recursive directory copy
+        let mut copy_options = fs_extra::dir::CopyOptions::new();
+        copy_options.overwrite = false; // Don't overwrite existing files
+        copy_options.skip_exist = true; // Skip files that already exist
+        copy_options.copy_inside = true; // Copy contents INTO the target directory
+        copy_options.content_only = true; // Copy only the contents, not the directory itself
 
-            let config_path = config_dir.join("claw.yaml");
+        // Copy entire assets directory contents to config directory
+        fs_extra::dir::copy(&assets_dir, &config_dir, &copy_options)
+            .context("Failed to copy assets to config directory")?;
 
-            let source_config_path = assets_dir.join("claw.yaml");
-            fs::copy(&source_config_path, &config_path).with_context(|| {
-                format!(
-                    "Failed to copy default config from {} to {}",
-                    source_config_path.display(),
-                    config_path.display()
-                )
-            })?;
-
-            let goals_dir = config_dir.join("goals");
-            fs::create_dir_all(&goals_dir).context("Failed to create goals directory")?;
-
-            // Copy all goals from assets
-            let assets_goals_dir = assets_dir.join("goals");
-            if assets_goals_dir.is_dir() {
-                for entry in fs::read_dir(&assets_goals_dir)
-                    .context("Failed to read assets goals directory")?
-                {
-                    let entry = entry?;
-                    if entry.file_type()?.is_dir() {
-                        let goal_name = entry.file_name();
-                        let dest_goal_dir = goals_dir.join(&goal_name);
-                        fs::create_dir_all(&dest_goal_dir).with_context(|| {
-                            format!("Failed to create goal directory for {:?}", goal_name)
-                        })?;
-
-                        let source_prompt = entry.path().join("prompt.yaml");
-                        let dest_prompt = dest_goal_dir.join("prompt.yaml");
-                        fs::copy(&source_prompt, &dest_prompt).with_context(|| {
-                            format!(
-                                "Failed to copy goal {:?} from {} to {}",
-                                goal_name,
-                                source_prompt.display(),
-                                dest_prompt.display()
-                            )
-                        })?;
-                    }
-                }
-            }
-
-            println!("I've also added some example goals. Try one out by running:");
-            println!("claw example -- --topic=\"the history of the Rust programming language\"");
-            println!("--------------------------------------------------------------------");
-        }
+        // Show success message with example command
+        println!("I've also added some example goals. Try one out by running:");
+        println!("claw example -- --topic=\"the history of the Rust programming language\"");
+        println!("--------------------------------------------------------------------");
     }
     Ok(())
 }
