@@ -14,9 +14,13 @@
 </a>
 </p>
 
-claw is a command-line utility that acts as an intelligent wrapper around your favorite Large Language Model (LLM) CLI (e.g., claude, gemini-cli). It transforms generic LLM sessions into powerful, goal-oriented workflows that are aware of your project's specific context, guidelines, and file structure.
+`claw` is a command-line utility that acts as an intelligent wrapper around your favorite Large Language Model (LLM) CLI (e.g., claude, gemini-cli). It transforms generic LLM sessions into powerful, goal-oriented workflows that are aware of your project's specific context, guidelines, and file structure.
 
 Stop wasting time with repetitive setup prompts. With claw, you define a goal once and run it anywhere.
+
+## How Is It Different From Smart Agents?
+
+The main point of claw is that you are in control of the initial context that gets sent to the agent instead of hoping that agent figures out the right things to look at.
 
 ## Key Features
 🎯 Goal-Oriented Sessions: Launch your LLM with a pre-defined purpose, like claw code-review or claw generate-tests.
