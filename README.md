@@ -65,12 +65,6 @@ xattr -r -d com.apple.quarantine /Applications/claw.app/
 sudo ln -s /Applications/claw.app/Contents/MacOS/claw /usr/local/bin/claw
 ```
 
-**Windows**
-```bash
-# Download the .msi installer and run it
-# The installer will add claw to your PATH automatically
-```
-
 #### From Source
 
 ```bash
