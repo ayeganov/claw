@@ -245,7 +245,12 @@ fn run_goal(
         recurse_depth,
     )?;
 
-    runner::run_llm(claw_config, &rendered_prompt)?;
+    // Check for large prompt warning
+    runner::check_prompt_size_warning(&rendered_prompt, &claw_config.prompt_arg_template);
+
+    // Create receiver and send prompt
+    let receiver = runner::create_receiver(claw_config);
+    receiver.send_prompt(&rendered_prompt)?;
 
     Ok(())
 }

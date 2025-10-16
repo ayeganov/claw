@@ -23,10 +23,23 @@ fn main() {
         }
 
         create_test_params_goal(&assets_dest);
-        create_local_claw_test_goal(&target_dir);
+        create_test_goal(&assets_dest);
+        create_local_claw_test_goals(&target_dir);
     }
 
     println!("cargo:rerun-if-changed=assets");
+}
+
+fn get_test_goal_yaml() -> &'static str {
+    r#"name: General Research
+description: A general-purpose research assistant.
+
+prompt: |
+  You are a world-class research assistant.
+  Please provide comprehensive summaries and analysis.
+
+  Please structure your response with clear headings and bullet points.
+"#
 }
 
 fn get_test_params_yaml() -> &'static str {
@@ -56,6 +69,19 @@ prompt: |
 "#
 }
 
+fn create_test_goal(assets_dir: &PathBuf) {
+    let test_goal_dir = assets_dir.join("goals").join("test_goal");
+    if let Err(e) = fs::create_dir_all(&test_goal_dir) {
+        println!("cargo:warning=Failed to create test_goal directory: {}", e);
+        return;
+    }
+
+    let prompt_file = test_goal_dir.join("prompt.yaml");
+    if let Err(e) = fs::write(&prompt_file, get_test_goal_yaml()) {
+        println!("cargo:warning=Failed to write test_goal prompt.yaml: {}", e);
+    }
+}
+
 fn create_test_params_goal(assets_dir: &PathBuf) {
     let test_params_dir = assets_dir.join("goals").join("test-params");
     if let Err(e) = fs::create_dir_all(&test_params_dir) {
@@ -69,15 +95,26 @@ fn create_test_params_goal(assets_dir: &PathBuf) {
     }
 }
 
-fn create_local_claw_test_goal(_target_dir: &PathBuf) {
-    let local_claw_dir = PathBuf::from(".claw/goals/test-params");
-    if let Err(e) = fs::create_dir_all(&local_claw_dir) {
-        println!("cargo:warning=Failed to create .claw/goals/test-params: {}", e);
-        return;
+fn create_local_claw_test_goals(_target_dir: &PathBuf) {
+    // Create test_goal
+    let test_goal_dir = PathBuf::from(".claw/goals/test_goal");
+    if let Err(e) = fs::create_dir_all(&test_goal_dir) {
+        println!("cargo:warning=Failed to create .claw/goals/test_goal: {}", e);
+    } else {
+        let prompt_file = test_goal_dir.join("prompt.yaml");
+        if let Err(e) = fs::write(&prompt_file, get_test_goal_yaml()) {
+            println!("cargo:warning=Failed to write .claw/goals/test_goal: {}", e);
+        }
     }
 
-    let prompt_file = local_claw_dir.join("prompt.yaml");
-    if let Err(e) = fs::write(&prompt_file, get_test_params_yaml()) {
-        println!("cargo:warning=Failed to write .claw/goals/test-params: {}", e);
+    // Create test-params
+    let test_params_dir = PathBuf::from(".claw/goals/test-params");
+    if let Err(e) = fs::create_dir_all(&test_params_dir) {
+        println!("cargo:warning=Failed to create .claw/goals/test-params: {}", e);
+    } else {
+        let prompt_file = test_params_dir.join("prompt.yaml");
+        if let Err(e) = fs::write(&prompt_file, get_test_params_yaml()) {
+            println!("cargo:warning=Failed to write .claw/goals/test-params: {}", e);
+        }
     }
 }

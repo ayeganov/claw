@@ -218,11 +218,25 @@ Example `~/.config/claw/claw.yaml`:
 # The executable name of the LLM CLI tool in your PATH.
 llm_command: "claude"
 
+# (Optional) The type of receiver to use for sending prompts.
+# Options:
+#   Generic: Uses the configured llm_command (default)
+#   ClaudeCli: Hardcodes "claude" as the command
+# receiver_type: "Generic"
+
 # (Optional) The argument pattern for passing the prompt to the LLM.
-# The "{{prompt}}" placeholder will be replaced with the final rendered prompt.
+# IMPORTANT: How prompts are sent depends on this template:
+#   - If "{{prompt}}" is present: Prompt is passed as a command-line argument
+#   - If "{{prompt}}" is NOT present: Prompt is piped to stdin
 #
-# Example for gemini-cli:
-# prompt_arg_template: "-i {{prompt}}"
+# Stdin mode (recommended for large contexts):
+# prompt_arg_template: "--profile work"
+#
+# Argument mode (may hit shell limits with large prompts):
+# prompt_arg_template: "--message {{prompt}}"
+#
+# For tools that read from stdin by default (like claude):
+# prompt_arg_template: ""
 
 # Context Management 2.0 Configuration
 # These settings control how claw processes files passed via --context parameter
@@ -258,6 +272,48 @@ excluded_extensions:
   - "o"
   - "a"
 ```
+
+### Stdin vs Argument Mode
+
+`claw` supports two methods for passing prompts to your LLM:
+
+#### Stdin Mode (Recommended)
+When `{{prompt}}` is **NOT** present in `prompt_arg_template`, the prompt is piped to the LLM's stdin:
+
+```yaml
+llm_command: "claude"
+prompt_arg_template: "--profile work"
+```
+
+**Advantages:**
+- ✅ No shell command-line length limits
+- ✅ Handles arbitrarily large contexts from `--context` parameter
+- ✅ Works with most modern LLM CLIs that read from stdin
+
+**Use this mode when:**
+- Working with large codebases via `--context`
+- Your prompts include substantial file contents
+- You want to avoid shell ARG_MAX errors
+
+#### Argument Mode
+When `{{prompt}}` **IS** present in `prompt_arg_template`, the prompt is passed as a command-line argument:
+
+```yaml
+llm_command: "my-llm"
+prompt_arg_template: "chat --message {{prompt}}"
+```
+
+**Limitations:**
+- ⚠️ Subject to shell argument length limits (typically 2MB, varies by system)
+- ⚠️ May fail with large contexts or long prompts
+- ⚠️ claw will warn if prompt exceeds 1MB
+
+**Use this mode when:**
+- Your LLM tool requires prompts as arguments
+- You're working with small to medium prompts
+- Backward compatibility with existing configs
+
+**Migration tip:** If you encounter "Argument list too long" errors, simply remove `{{prompt}}` from your `prompt_arg_template` and add any necessary flags instead.
 
 ### The `prompt.yaml` File
 Each goal is defined by a prompt.yaml file located in a subdirectory of goals/.

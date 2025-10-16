@@ -1,8 +1,9 @@
-use crate::config::{find_all_goals, DiscoveredGoal, GoalSource};
+use crate::config::{find_all_goals, ConfigPaths, DiscoveredGoal, GoalSource};
 use anyhow::Result;
 
 /// Handles the `claw list` command.
 pub fn handle_list_command(show_local_only: bool, show_global_only: bool) -> Result<()> {
+    let paths = ConfigPaths::new()?;
     let goals = find_all_goals()?;
 
     if goals.is_empty() {
@@ -24,7 +25,12 @@ pub fn handle_list_command(show_local_only: bool, show_global_only: bool) -> Res
 
     // Display local goals
     if !show_global_only && !local_goals.is_empty() {
-        println!("Local Goals (./.claw/):");
+        let local_path = paths
+            .local
+            .as_ref()
+            .map(|p| p.display().to_string())
+            .unwrap_or_else(|| "./.claw/".to_string());
+        println!("Local Goals ({}):", local_path);
         println!();
         for goal in &local_goals {
             print_goal_info(goal);
@@ -36,7 +42,12 @@ pub fn handle_list_command(show_local_only: bool, show_global_only: bool) -> Res
         if !show_global_only && !local_goals.is_empty() {
             println!(); // Separator between sections
         }
-        println!("Global Goals (~/.config/claw/):");
+        let global_path = paths
+            .global
+            .as_ref()
+            .map(|p| p.display().to_string())
+            .unwrap_or_else(|| "~/.config/claw/".to_string());
+        println!("Global Goals ({}):", global_path);
         println!();
         for goal in &global_goals {
             print_goal_info(goal);

@@ -59,7 +59,12 @@ pub fn handle_add_command(
     println!("The agent will create files in: {}", save_path.display());
     println!("Please follow the instructions from the assistant.");
 
-    runner::run_llm(claw_config, &rendered_meta_prompt)?;
+    // Check for large prompt warning
+    runner::check_prompt_size_warning(&rendered_meta_prompt, &claw_config.prompt_arg_template);
+
+    // Create receiver and send prompt
+    let receiver = runner::create_receiver(claw_config);
+    receiver.send_prompt(&rendered_meta_prompt)?;
 
     println!("\nAgent session finished. Verify that the goal was created successfully.");
     Ok(())
