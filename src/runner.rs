@@ -16,14 +16,25 @@ use crate::config::{ClawConfig, ReceiverType};
 ///
 /// # Returns
 /// A boxed trait object implementing PromptReceiver
+///
+/// # Panics
+/// Panics if receiver_type is Generic but llm_command is not specified
 pub fn create_receiver(config: &ClawConfig) -> Box<dyn PromptReceiver> {
     let receiver_type = config.receiver_type.clone().unwrap_or(ReceiverType::Generic);
 
     match receiver_type {
-        ReceiverType::Generic => Box::new(GenericReceiver::new(
-            config.llm_command.clone(),
-            config.prompt_arg_template.clone(),
-        )),
+        ReceiverType::Generic => {
+            let llm_command = config.llm_command.clone().unwrap_or_else(|| {
+                panic!(
+                    "llm_command is required when using Generic receiver type. \
+                     Either set llm_command in your config or use receiver_type: ClaudeCli"
+                )
+            });
+            Box::new(GenericReceiver::new(
+                llm_command,
+                config.prompt_arg_template.clone(),
+            ))
+        }
         ReceiverType::ClaudeCli => {
             Box::new(ClaudeCliReceiver::new(config.prompt_arg_template.clone()))
         }
@@ -282,10 +293,22 @@ pub fn execute_context_scripts(
 }
 
 pub fn run_pass_through(config: &ClawConfig) -> Result<()> {
-    let llm_executable = which::which(&config.llm_command).with_context(|| {
+    // Determine which command to use based on receiver_type
+    let receiver_type = config.receiver_type.clone().unwrap_or(ReceiverType::Generic);
+    let llm_command = match receiver_type {
+        ReceiverType::Generic => config.llm_command.clone().ok_or_else(|| {
+            anyhow::anyhow!(
+                "llm_command is required when using Generic receiver type. \
+                 Either set llm_command in your config or use receiver_type: ClaudeCli"
+            )
+        })?,
+        ReceiverType::ClaudeCli => "claude".to_string(),
+    };
+
+    let llm_executable = which::which(&llm_command).with_context(|| {
         format!(
             "LLM command '{}' not found in your PATH. Please make sure it's installed and accessible.",
-            config.llm_command
+            llm_command
         )
     })?;
 

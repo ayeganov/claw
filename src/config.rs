@@ -112,7 +112,10 @@ impl Default for ReceiverType {
 #[derive(Debug, Clone, Deserialize)]
 pub struct ClawConfig {
     /// The executable name of the LLM command-line tool.
-    pub llm_command: String,
+    /// Optional - only required when using Generic receiver type.
+    /// Ignored when receiver_type is ClaudeCli.
+    #[serde(default)]
+    pub llm_command: Option<String>,
 
     /// The argument template for passing the prompt to the LLM.
     /// Uses "{{prompt}}" as a placeholder for the rendered prompt.
@@ -156,7 +159,7 @@ impl Default for ClawConfig {
     fn default() -> Self {
         Self {
             // We default to "claude" as it's a common tool with a simple invocation.
-            llm_command: "claude".to_string(),
+            llm_command: Some("claude".to_string()),
             prompt_arg_template: default_prompt_arg_template(),
             receiver_type: None, // Defaults to Generic when used
             // Context Management 2.0 defaults

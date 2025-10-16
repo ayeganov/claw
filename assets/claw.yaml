@@ -5,8 +5,9 @@
 receiver_type: "ClaudeCli"
 
 # (Optional) The executable name of the LLM CLI tool.
-# Note: This is ignored when receiver_type is "ClaudeCli"
-llm_command: "claude"
+# Only required when using Generic receiver type.
+# Ignored when receiver_type is ClaudeCli (which hardcodes "claude").
+# llm_command: "my-llm-tool"
 
 # (Optional) The argument pattern for passing additional flags to the LLM.
 # IMPORTANT: How prompts are sent depends on this template:
