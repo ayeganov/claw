@@ -89,6 +89,26 @@ pub enum ErrorHandlingMode {
     Ignore,
 }
 
+/// Defines the type of receiver used to send prompts to the LLM.
+///
+/// Receivers abstract the delivery mechanism for prompts, allowing
+/// different strategies for passing prompts to various LLM tools.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum ReceiverType {
+    /// Generic receiver that uses the configured `llm_command`.
+    /// Supports both stdin and argument-based prompt passing.
+    Generic,
+    /// Convenience receiver that hardcodes "claude" as the command.
+    /// Ignores the `llm_command` config field.
+    ClaudeCli,
+}
+
+impl Default for ReceiverType {
+    fn default() -> Self {
+        ReceiverType::Generic
+    }
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct ClawConfig {
     /// The executable name of the LLM command-line tool.
@@ -98,6 +118,11 @@ pub struct ClawConfig {
     /// Uses "{{prompt}}" as a placeholder for the rendered prompt.
     #[serde(default = "default_prompt_arg_template")]
     pub prompt_arg_template: String,
+
+    /// The type of receiver to use for sending prompts.
+    /// Defaults to Generic if not specified for backward compatibility.
+    #[serde(default)]
+    pub receiver_type: Option<ReceiverType>,
 
     // Context Management 2.0 fields
     /// Maximum file size in KB that can be included as context.
@@ -133,6 +158,7 @@ impl Default for ClawConfig {
             // We default to "claude" as it's a common tool with a simple invocation.
             llm_command: "claude".to_string(),
             prompt_arg_template: default_prompt_arg_template(),
+            receiver_type: None, // Defaults to Generic when used
             // Context Management 2.0 defaults
             max_file_size_kb: Some(1024), // 1 MB
             max_files_per_directory: Some(50),
@@ -401,7 +427,14 @@ pub fn find_all_goals() -> Result<Vec<DiscoveredGoal>> {
 
 fn find_assets_dir() -> Result<PathBuf> {
     let exe_path = env::current_exe().context("Failed to get current executable path")?;
-    let exe_dir = exe_path
+
+    // Resolve symlinks to get the actual executable location.
+    // This is crucial on macOS where /usr/local/bin/claw might be a symlink
+    // to /Applications/claw.app/Contents/MacOS/claw
+    let resolved_exe_path = fs::canonicalize(&exe_path)
+        .context("Failed to resolve executable path (symlink resolution)")?;
+
+    let exe_dir = resolved_exe_path
         .parent()
         .context("Failed to get parent directory of executable")?;
 

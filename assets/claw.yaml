@@ -1,13 +1,26 @@
-# The executable name of the LLM CLI tool that exists in your PATH.
-# Change this to "gemini", "ollama", or any other tool you use.
+# The type of receiver to use for sending prompts to the LLM.
+# Options:
+#   Generic: Uses the configured llm_command (default)
+#   ClaudeCli: Hardcodes "claude" as the command (ignores llm_command)
+receiver_type: "ClaudeCli"
+
+# (Optional) The executable name of the LLM CLI tool.
+# Note: This is ignored when receiver_type is "ClaudeCli"
 llm_command: "claude"
 
-# (Optional) The argument pattern for passing the prompt to the LLM.
-# The "{{prompt}}" placeholder will be replaced with the final rendered prompt.
-# The default is just "{{prompt}}".
+# (Optional) The argument pattern for passing additional flags to the LLM.
+# IMPORTANT: How prompts are sent depends on this template:
+#   - If "{{prompt}}" is present: Prompt is passed as a command-line argument
+#   - If "{{prompt}}" is NOT present: Prompt is piped to stdin (recommended for large contexts)
 #
-# Example for gemini-cli:
-# prompt_arg_template: "-i {{prompt}}"
+# Stdin mode (recommended - no shell limits):
+prompt_arg_template: ""
+#
+# Or with additional flags:
+# prompt_arg_template: "--profile work"
+#
+# Argument mode (may hit shell limits with large prompts):
+# prompt_arg_template: "--message {{prompt}}"
 
 # Context Management 2.0 Configuration
 # These settings control how claw processes files passed via --context parameter
